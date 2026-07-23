@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes fadeInSlow {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0 }
+  to { transform: translateY(0); opacity: 1 }
+}
+
+.animate-slideUp {
+  animation: slideUp 10s ease-out; /* was 1s, now 2.5s */
+}
+
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 10px #facc15 }
+  50% { text-shadow: 0 0 20px #facc15 }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes blurOut {
+  0% { filter: blur(0px); }
+  100% { filter: blur(8px); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0 }
+  to { transform: translateY(0); opacity: 1 }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-in-out forwards;
+}
+
+.animate-blurOut {
+  animation: blurOut 1s ease-in-out forwards;
+  animation-delay: 2s; /* wait 2s before blurring */
+}
+
+.animate-slideUp {
+  animation: slideUp 1.5s ease-out forwards;
+  animation-delay: 2s; /* wait until blur starts */
+}
+
+@keyframes pageFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: scale(1.05); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.page-exit {
+  animation: pageFadeOut 0.8s ease forwards;
+}
+
+.page-enter {
+  animation: pageFadeIn 0.8s ease forwards;
+}
+
+
+
+/* Utility classes */
+.animate-fadeIn { animation: fadeIn 1s ease-in-out; }
+.animate-fadeInSlow { animation: fadeInSlow 2s ease-in-out; }
+.animate-slideUp { animation: slideUp 1s ease-out; }
+.animate-glow { animation: glow 2s infinite; }
