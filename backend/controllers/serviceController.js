@@ -1,5 +1,5 @@
 // controllers/ServiceController.js
-const ServiceModel = require("../models/ServiceModel");
+const ServiceModel = require("../models/serviceModel");
 
 exports.getAllServices = async (req, res) => {
   try {
