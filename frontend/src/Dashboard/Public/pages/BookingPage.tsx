@@ -206,7 +206,7 @@ const BarberSelect = ({
       >
         {barber.profile_picture ? (
           <img
-            src={`http://localhost:5000${barber.profile_picture}`}
+            src={`${import.meta.env.VITE_API_URL}${barber.profile_picture}`}
             alt={barber.name}
             className="w-16 h-16 rounded-full object-cover border-2 border-yellow-600"
           />

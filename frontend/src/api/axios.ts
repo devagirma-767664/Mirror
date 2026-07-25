@@ -2,11 +2,13 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+console.log("🔍 DEBUG baseURL:", import.meta.env.VITE_API_URL);
 
 // Attach token automatically
 axiosInstance.interceptors.request.use(

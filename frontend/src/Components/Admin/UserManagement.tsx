@@ -187,7 +187,7 @@ const UserManagement: React.FC = () => {
               <td className="p-2">
                 {user.profile_picture ? (
                   <img
-                    src={`http://localhost:5000${user.profile_picture}`}
+                    src={`${import.meta.env.VITE_API_URL}${user.profile_picture}`}
                     alt={user.name}
                     className="w-12 h-12 rounded-full object-cover"
                   />

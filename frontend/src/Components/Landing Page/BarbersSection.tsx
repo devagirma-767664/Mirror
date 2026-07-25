@@ -53,7 +53,7 @@ const BarbersSection: React.FC = () => {
               <div className="overflow-hidden rounded-lg mb-4">
                 {barber.profile_picture ? (
                   <img
-                    src={`http://localhost:5000${barber.profile_picture}`}
+                    src={`${import.meta.env.VITE_API_URL}${barber.profile_picture}`}
                     alt={barber.name}
                     className="w-full h-56 object-cover rounded-md group-hover:scale-110 transition-transform duration-500"
                   />
