@@ -139,9 +139,9 @@ const Subscription={
   async receipt(id) {
     if(!/^\d+$/.test(String(id))) throw new Error('Payment receipt not found.');
     const row=(await pool.query('SELECT receipt_path,receipt_mime_type,receipt_original_name FROM subscription_requests WHERE id=$1',[id])).rows[0];
-    const filePath=ReceiptStore.resolve(row?.receipt_path);
-    if(!row||!filePath) throw new Error('Payment receipt not found.');
-    return {...row,filePath};
+    const file=await ReceiptStore.read(row?.receipt_path);
+    if(!row||!file) throw new Error('Payment receipt not found.');
+    return {...row,file};
   },
   async review(id,userId,data) {
     if(!['approve','reject'].includes(data.decision)) throw new Error('Choose approve or reject.');

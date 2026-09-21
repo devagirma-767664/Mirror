@@ -7,6 +7,7 @@ const ShopModel = require('../models/shopModel');
 const bcrypt = require('bcrypt');
 const Finance = require('../models/deskFinanceModel');
 const {normalizePhone}=require('../utils/phone');
+const PublicUploads = require('../storage/publicUploadStore');
 
 const AdminController = {
   async addUser(req, res) {
@@ -22,7 +23,7 @@ const AdminController = {
       if (normalizedRole!=='support' && workspaceUsers.length >= Number(shop?.limits?.staff || 8)) {
         return res.status(403).json({ error: `Your ${shop.plan_name} plan allows ${shop.limits.staff} staff accounts.` });
       }
-      const profilePicture = req.file ? `/uploads/${req.file.filename}` : null;
+      const profilePicture = req.file ? await PublicUploads.save(req.file) : null;
       const support=normalizedRole==='support';
       const staffKind=support?String(staffType||'').toLowerCase():null;
       if(support&&!['cleaner','washer','other'].includes(staffKind)) return res.status(400).json({error:'Choose cleaner, washer, or other support staff.'});

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./db');
 const { rateLimit } = require('./middleware/rateLimit');
+const PublicUploads = require('./storage/publicUploadStore');
 
 const adminRoutes = require('./routes/adminRoutes');
 const barberRoutes = require('./routes/barberRoutes');
@@ -52,7 +53,17 @@ app.use(cors({
 }));
 app.use(rateLimit({ windowMs: 60 * 1000, max: wholeNumber(process.env.RATE_LIMIT_PER_MINUTE, 600), scope: 'global' }));
 app.use(express.json({ limit: '256kb', strict: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { index: false, maxAge: production ? '7d' : 0, fallthrough: false }));
+app.get(/^\/uploads\/(.+)$/, async (req, res, next) => {
+  try {
+    const file = await PublicUploads.read(req.params[0]);
+    if (!file) return res.status(404).json({ error: 'Image not found.' });
+    res.setHeader('Content-Type', file.contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', production ? 'public, max-age=604800, immutable' : 'no-store');
+    if (file.contentLength) res.setHeader('Content-Length', String(file.contentLength));
+    file.stream.on('error', next);
+    file.stream.pipe(res);
+  } catch (error) { next(error); }
+});
 
 if (!production) app.get('/', (_req, res) => res.json({ service: 'Mirror API', status: 'ok' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

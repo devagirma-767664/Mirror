@@ -9,13 +9,16 @@
     "dev": "nodemon server.js",
     "migrate": "node scripts/migrate.js",
     "test:reception": "node scripts/test-reception-desk.js",
-    "test:desk": "node scripts/test-reception-desk.js"
+    "test:desk": "node scripts/test-reception-desk.js",
+    "migrate:uploads": "node scripts/migrate-uploads-to-object-storage.js",
+    "test:storage": "node scripts/test-object-storage-local.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",

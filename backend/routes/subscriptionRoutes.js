@@ -21,7 +21,9 @@ platform.get('/billing/requests/:id/receipt',async(req,res)=>{
     const receipt=await Subscription.receipt(req.params.id);
     res.setHeader('Content-Type',receipt.receipt_mime_type||'application/octet-stream');
     res.setHeader('Content-Disposition',`inline; filename="${String(receipt.receipt_original_name||'payment-receipt').replace(/[^a-zA-Z0-9._-]/g,'_')}"`);
-    res.sendFile(receipt.filePath);
+    if(receipt.file.contentLength) res.setHeader('Content-Length',String(receipt.file.contentLength));
+    receipt.file.stream.on('error',error=>{if(!res.headersSent)res.status(500).json({error:'Unable to read payment receipt.'});else res.destroy(error);});
+    receipt.file.stream.pipe(res);
   } catch(error) {res.status(400).json({error:error.message});}
 });
 platform.post('/billing/accounts',run(r=>Subscription.saveAccount(r.user.id,r.body)));

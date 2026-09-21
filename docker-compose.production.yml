@@ -1,0 +1,18 @@
+services:
+  mirror:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    ports:
+      - "127.0.0.1:${MIRROR_PORT:-5000}:5000"
+    restart: unless-stopped
+    volumes:
+      # These volumes are a safe fallback until object storage is connected.
+      - mirror_uploads:/app/backend/uploads
+      - mirror_private:/app/backend/private
+
+volumes:
+  mirror_uploads:
+  mirror_private:

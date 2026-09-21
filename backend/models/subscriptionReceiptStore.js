@@ -1,10 +1,9 @@
-const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
+const storage=require('../storage/objectStorage');
 
 const backendRoot=path.join(__dirname,'..');
 const privateRoot=path.join(backendRoot,'private','payment-receipts');
-fs.mkdirSync(privateRoot,{recursive:true});
 const extensionFor={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'};
 
 function safeName(value){
@@ -18,23 +17,20 @@ async function save(file){
   if(!extension) throw new Error('Attach a PNG, JPG, or WEBP receipt screenshot.');
   const filename=`${crypto.randomUUID()}${extension}`;
   const relative=path.join('private','payment-receipts',filename);
-  const absolute=path.join(backendRoot,relative);
-  await fs.promises.writeFile(absolute,file.buffer,{flag:'wx'});
+  await storage.save(relative,file.buffer,{contentType:file.mimetype,cacheControl:'private, no-store'});
   return {path:relative.replace(/\\/g,'/'),originalName:safeName(file.originalname),mimeType:file.mimetype,size:file.size||file.buffer.length};
 }
 
 async function remove(relative){
   if(!relative) return;
-  const absolute=path.resolve(backendRoot,relative);
-  if(path.dirname(absolute)!==privateRoot) return;
-  await fs.promises.rm(absolute,{force:true});
+  if(!String(relative).replace(/\\/g,'/').startsWith('private/payment-receipts/')) return;
+  await storage.remove(relative);
 }
 
-function resolve(relative){
+async function read(relative){
   if(!relative) return null;
-  const absolute=path.resolve(backendRoot,relative);
-  if(path.dirname(absolute)!==privateRoot) return null;
-  return absolute;
+  if(!String(relative).replace(/\\/g,'/').startsWith('private/payment-receipts/')) return null;
+  return storage.read(relative);
 }
 
-module.exports={save,remove,resolve,privateRoot};
+module.exports={save,remove,read,privateRoot};

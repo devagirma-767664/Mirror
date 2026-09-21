@@ -4,6 +4,7 @@ const Session=require('../models/sessionModel');
 const Onboarding=require('../models/onboardingModel');
 const Finance=require('../models/deskFinanceModel');
 const {normalizePhone}=require('../utils/phone');
+const PublicUploads=require('../storage/publicUploadStore');
 const AuthController={
   async login(req,res) {
     try {
@@ -27,7 +28,7 @@ const AuthController={
       const password=String(req.body?.password||'');
       if(password&&(password.length<8||Buffer.byteLength(password)>72))return res.status(400).json({error:'Use a password of at least 8 characters and at most 72 bytes.'});
       const phone=(['admin','barber','receptionist','platform_admin'].includes(req.user.role)&&req.body?.phone)?normalizePhone(req.body.phone):null;
-      const image=req.file?`/uploads/${req.file.filename}`:null;
+      const image=req.file?await PublicUploads.save(req.file):null;
       const hash=password?await bcrypt.hash(password,10):null;
       await require('../db').query(`UPDATE users SET name=$2,profile_picture=COALESCE($3,profile_picture),password=COALESCE($4,password),phone=COALESCE($5,phone)
         WHERE id=$1`,[req.user.id,name,image,hash,phone]);
