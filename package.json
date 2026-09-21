@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node scripts/start-local.js",
+    "start": "npm run start:production",
     "dev": "node scripts/start-local.js --watch",
     "start:backend": "npm --prefix backend start",
     "start:frontend": "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort",
