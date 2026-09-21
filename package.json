@@ -1,8 +1,8 @@
 {
-  "name": "rental-system",
+  "name": "mirror",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Mirror salon operations platform",
+  "private": true,
   "scripts": {
     "start": "npm run start:production",
     "dev": "node scripts/start-local.js --watch",
@@ -19,25 +19,6 @@
   "engines": {
     "node": "22.x"
   },
-  "dependencies": {
-    "@reduxjs/toolkit": "^2.11.2",
-    "@tailwindcss/vite": "^4.2.4",
-    "autoprefixer": "^10.5.0",
-    "axios": "^1.16.0",
-    "bcrypt": "^6.0.0",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
-    "pg": "^8.20.0",
-    "postcss": "^8.5.14",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-redux": "^9.2.0",
-    "react-router-dom": "^6.30.3",
-    "tailwindcss": "^4.2.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
