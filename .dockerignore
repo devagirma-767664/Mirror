@@ -1,0 +1,14 @@
+# Keep local state, backups, and generated dependencies out of cloud build contexts.
+.git
+.env
+.env.*
+node_modules
+**/node_modules
+frontend/dist
+backups
+backend/private
+backend/uploads
+backend/*.sql
+backend/*.dump
+screenshots
+*.log
