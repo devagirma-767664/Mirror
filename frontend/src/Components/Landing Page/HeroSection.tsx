@@ -7,7 +7,7 @@ const HeroSection: React.FC = () => {
       <div className="absolute inset-0">
         <img
           src="/assets/images/barber4.png" // replace with your picture
-          alt="Barber Background"
+          alt="Styling studio background"
           className="w-full h-full object-cover object-left" // focus image on left side
         />
         {/* Gradient overlay for smooth left fade */}
@@ -18,13 +18,13 @@ const HeroSection: React.FC = () => {
       <div className="relative z-10 max-w-4xl px-10 md:px-20 text-left">
         <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-tight">
           Find The Best{" "}
-          <span className="text-yellow-600 italic">Barber Shop</span> <br />
+          <span className="text-yellow-600 italic">Style Studio</span> <br />
           <span className="text-yellow-600">For You</span>
         </h2>
 
         <p className="text-base md:text-lg text-gray-800 max-w-md mt-6">
-          Step into elegance — where precision meets artistry. Our barbers craft
-          timeless looks with modern techniques, ensuring every cut reflects
+          Step into elegance — where precision meets artistry. Our stylists craft
+          timeless looks with modern techniques, ensuring every service reflects
           your personality and confidence.
         </p>
 

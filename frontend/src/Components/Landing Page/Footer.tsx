@@ -7,7 +7,7 @@ const Footer: React.FC = () => {
         
         {/* Brand / About */}
         <div className="bg-white/5 backdrop-blur-md rounded-xl shadow-lg p-6 transform hover:-translate-y-2 transition-all duration-300">
-          <h4 className="text-2xl font-bold text-yellow-500 mb-4">BarberBook</h4>
+          <h4 className="text-2xl font-bold text-yellow-500 mb-4">Mirror</h4>
           <p className="text-gray-400 leading-relaxed">
             Elevating grooming into an art form. Precision, style, and confidence —
             all in one place.
@@ -28,7 +28,7 @@ const Footer: React.FC = () => {
               💬 <a href="https://wa.me/251900000000" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-400">Chat on WhatsApp</a>
             </li>
             <li className="flex items-center gap-2">
-              ✉️ <a href="mailto:info@barberbook.com" className="hover:text-yellow-400">info@barberbook.com</a>
+              ✉️ <a href="mailto:info@mirror.local" className="hover:text-yellow-400">info@mirror.local</a>
             </li>
           </ul>
         </div>
@@ -48,7 +48,7 @@ const Footer: React.FC = () => {
 
       {/* Bottom Bar */}
       <div className="mt-12 border-t border-gray-700 pt-6 text-center text-gray-500 text-sm">
-        © {new Date().getFullYear()} BarberBook. All rights reserved.
+        © {new Date().getFullYear()} Mirror. All rights reserved.
       </div>
     </footer>
   );

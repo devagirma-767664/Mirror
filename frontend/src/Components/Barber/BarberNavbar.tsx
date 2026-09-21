@@ -1,6 +1,5 @@
 // src/components/barber/BarberNavbar.tsx
 import React from "react";
-import { GiScissors } from "react-icons/gi";
 import { useAppDispatch } from "../../app/hooks";
 import { logoutUser } from "../../features/auth/authThunks";
 import { useNavigate } from "react-router-dom";
@@ -19,9 +18,9 @@ const BarberNavbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         {/* Logo with Icon */}
         <div className="flex items-center gap-2">
-          <GiScissors className="text-white text-3xl" />
+          <img src="/mirror.svg" alt="" className="h-9 w-9" />
           <h1 className="text-2xl font-serif font-bold text-white tracking-wide">
-            BarberBook
+            Mirror
           </h1>
         </div>
 
@@ -33,8 +32,8 @@ const BarberNavbar: React.FC = () => {
             </a>
           </li>
           <li>
-            <a href="#ratings" className="hover:text-gray-200 transition">
-              Ratings
+            <a href="#earnings" className="hover:text-gray-200 transition">
+              My earnings
             </a>
           </li>
           <li>

@@ -54,4 +54,11 @@ router.get(
   ReceptionistController.getBills
 );
 
+router.get('/inventory', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.getInventory);
+router.post('/inventory', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.createInventory);
+router.put('/inventory/:id', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.updateInventory);
+router.post('/inventory/:id/adjust', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.adjustInventory);
+router.get('/expenses', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.getExpenses);
+router.post('/expenses', authMiddleware, roleMiddleware(['receptionist']), ReceptionistController.createExpense);
+
 module.exports = router;

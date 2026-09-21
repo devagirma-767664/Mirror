@@ -53,7 +53,7 @@ export const startSession = createAsyncThunk(
   "barbers/startSession",
   async (appointmentId: string, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.put(`/appointments/${appointmentId}/start`);
+      const response = await axiosInstance.put(`/barber/appointments/${appointmentId}/start`);
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || "Failed to start session");
@@ -67,7 +67,7 @@ export const closeSession = createAsyncThunk(
   "barbers/closeSession",
   async (appointmentId: string, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.put(`/appointments/${appointmentId}/close`);
+      const response = await axiosInstance.put(`/barber/appointments/${appointmentId}/close`);
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || "Failed to close session");
@@ -79,9 +79,13 @@ export const closeSession = createAsyncThunk(
 // 🔹 Backend route is POST /dayoff
 export const requestDayOff = createAsyncThunk(
   "barbers/requestDayOff",
-  async (dayOffData: { date: string; reason: string }, { rejectWithValue }) => {
+  async (dayOffData: { barberId: string; date: string; reason: string }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post("/dayoff", dayOffData);
+      const response = await axiosInstance.post("/barber/dayoff", {
+        barberId: dayOffData.barberId,
+        requestDate: dayOffData.date,
+        reason: dayOffData.reason,
+      });
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || "Failed to request day off");
@@ -95,7 +99,7 @@ export const fetchBarberRatings = createAsyncThunk(
   "barbers/fetchBarberRatings",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/ratings");
+      const response = await axiosInstance.get("/barber/ratings");
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || "Failed to fetch ratings");

@@ -1,127 +1,56 @@
-// src/Components/Receptionist/AppointmentSearch.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { FiCheckCircle, FiClock, FiPhone, FiRefreshCw, FiSearch } from "react-icons/fi";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { fetchAppointments, checkInAppointment } from "../../features/appointments/appointmentsThunks";
+import { checkInAppointment, fetchAppointments } from "../../features/appointments/appointmentsThunks";
+
+const formatDateTime = (value: unknown) => {
+  if (!value) return "Time not set";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "Time not set" : new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+};
 
 const AppointmentSearch: React.FC = () => {
   const dispatch = useAppDispatch();
   const { list, loading, error } = useAppSelector((state) => state.appointments);
+  const appointments = list || [];
   const [query, setQuery] = useState("");
-  const [checkInSuccess, setCheckInSuccess] = useState(false); // ✅ new state
+  const [checkInSuccess, setCheckInSuccess] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAppointments());
   }, [dispatch]);
 
-  const filtered = list.filter(
-    (appt) =>
-      appt.status !== "Completed" &&
-      (appt.customer_name.toLowerCase().includes(query.toLowerCase()) ||
-        appt.customer_phone.includes(query))
-  );
-
-  const formatDateTime = (isoString: string) => {
-    if (!isoString) return "—";
-    const date = new Date(isoString);
-    return date.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return appointments.filter((appointment: any) => {
+      if (appointment.status === "Completed" || appointment.status === "Cancelled") return false;
+      if (!normalized) return true;
+      return `${appointment.customer_name || ""} ${appointment.customer_phone || ""} ${appointment.barber_name || ""} ${appointment.service_name || ""}`.toLowerCase().includes(normalized);
     });
-  };
+  }, [appointments, query]);
 
-  const handleCheckIn = async (id: number) => {
-    await dispatch(checkInAppointment(id));
-    setCheckInSuccess(true); // ✅ show popup
+  const handleCheckIn = async (id: string | number) => {
+    try {
+      await dispatch(checkInAppointment(String(id))).unwrap();
+      await dispatch(fetchAppointments());
+      setCheckInSuccess(true);
+    } catch {
+      // The appointments slice keeps the server error visible in the page.
+    }
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-bold text-yellow-600 mb-6">Check‑In Customers</h2>
-
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-2 text-gray-400">🔍</span>
-        <input
-          type="text"
-          placeholder="Search by name or phone..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="border pl-10 pr-4 py-2 rounded w-full text-sm focus:ring-2 focus:ring-yellow-500"
-        />
-      </div>
-
-      {loading && <p className="text-gray-500">Loading appointments...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
-
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse rounded-lg overflow-hidden shadow-sm">
-          <thead className="bg-yellow-100 text-gray-700">
-            <tr>
-              <th className="p-3 text-sm font-semibold text-left">Customer</th>
-              <th className="p-3 text-sm font-semibold text-left">Service</th>
-              <th className="p-3 text-sm font-semibold text-left">Barber</th>
-              <th className="p-3 text-sm font-semibold text-left">Time</th>
-              <th className="p-3 text-sm font-semibold text-left">Status</th>
-              <th className="p-3 text-sm font-semibold text-left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && !loading && !error && (
-              <tr>
-                <td colSpan={6} className="text-center text-gray-500 py-4">
-                  No appointments found.
-                </td>
-              </tr>
-            )}
-            {filtered.map((appt, idx) => (
-              <tr
-                key={appt.id}
-                className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-              >
-                <td className="p-3 text-sm text-left">{appt.customer_name}</td>
-                <td className="p-3 text-sm text-left">{appt.service_name}</td>
-                <td className="p-3 text-sm text-left">{appt.barber_name}</td>
-                <td className="p-3 text-sm text-left">{formatDateTime(appt.start_time)}</td>
-                <td className="p-3 text-sm text-left">{appt.status}</td>
-                <td className="p-3 text-sm text-left">
-                  <button
-                    disabled={appt.status !== "Booked"}
-                    onClick={() => handleCheckIn(appt.id)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition ${
-                      appt.status === "Booked"
-                        ? "bg-green-500 text-white hover:bg-green-600"
-                        : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                    }`}
-                  >
-                    Check In
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ✅ Success Popup */}
-      {checkInSuccess && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white w-80 p-8 rounded-xl shadow-2xl text-center">
-            <div className="text-green-600 text-7xl mb-4">✔️</div>
-            <h3 className="text-2xl font-bold mb-2 text-green-700">Check‑In Successful</h3>
-            <p className="text-gray-600 mb-6">The customer has been checked in successfully.</p>
-            <button
-              onClick={() => setCheckInSuccess(false)}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <section className="reception-module-view">
+      <header className="admin-module-header"><div><p className="admin-eyebrow">BOOKINGS</p><h2 className="admin-module-title">Customers who arrived</h2><p className="admin-module-subtitle">Find the booking and send the customer to their stylist.</p></div><button className="admin-secondary-button" onClick={() => dispatch(fetchAppointments())}><FiRefreshCw /> <span>Refresh</span></button></header>
+      <section className="admin-module-card">
+        <div className="admin-module-toolbar"><div><p className="admin-card-kicker">TODAY’S BOOKINGS</p><h3>{filtered.length} customers waiting</h3></div><label className="admin-search-box"><FiSearch /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, phone, or stylist" /></label></div>
+        {loading && <div className="admin-inline-state">Loading bookings…</div>}
+        {error && <div className="admin-inline-error">{typeof error === "string" ? error : "Could not load bookings."}</div>}
+        {!loading && !filtered.length && <div className="admin-empty-state">No bookings match your search.</div>}
+        <div className="reception-appointment-list">{filtered.map((appointment: any) => <article className="reception-appointment-card" key={appointment.id}><div className="reception-appointment-time"><FiClock /><strong>{formatDateTime(appointment.start_time)}</strong></div><div className="reception-appointment-main"><strong>{appointment.customer_name || "Walk-in customer"}</strong><span><FiPhone /> {appointment.customer_phone || "No phone added"}</span><small>{appointment.service_name || "Service"} · {appointment.barber_name || "No stylist chosen"}</small></div><span className={`admin-status-pill ${appointment.status === "Booked" ? "is-pending" : "is-paid"}`}>{appointment.status === 'Booked' ? 'Booked' : 'Sent to stylist'}</span><button disabled={appointment.status !== "Booked"} onClick={() => handleCheckIn(appointment.id)} className={`reception-checkin-button ${appointment.status === "Booked" ? "is-ready" : "is-disabled"}`}><FiCheckCircle /> {appointment.status === "Booked" ? "Mark here" : "Sent"}</button></article>)}</div>
+      </section>
+      {checkInSuccess && <div className="reception-modal-backdrop"><div className="reception-modal"><span className="reception-success-icon"><FiCheckCircle /></span><h3>Customer sent to stylist</h3><p>Take payment when the customer returns after service.</p><button className="admin-primary-button" onClick={() => setCheckInSuccess(false)}>Done</button></div></div>}
+    </section>
   );
 };
 

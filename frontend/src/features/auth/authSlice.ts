@@ -3,7 +3,6 @@ import { createSlice } from "@reduxjs/toolkit";
 import { loginUser, registerUser, logoutUser } from "./authThunks";
 
 interface AuthState {
-  id: string
   user: any | null;
   token: string | null;
   loading: boolean;
@@ -22,7 +21,13 @@ const initialState: AuthState = {
 const authSlice = createSlice({
   name: "auth",
   initialState,
-  reducers: {},
+  reducers: {
+    setSession(state,action) {
+      state.user=action.payload.user;state.token=action.payload.token;state.error=null;
+      localStorage.setItem('user',JSON.stringify(state.user));localStorage.setItem('token',state.token!);
+    },
+    refreshUser(state,action) {state.user=action.payload;localStorage.setItem('user',JSON.stringify(state.user));},
+  },
   extraReducers: (builder) => {
     // Login
     builder.addCase(loginUser.pending, (state) => {
@@ -73,3 +78,4 @@ const authSlice = createSlice({
 });
 
 export default authSlice.reducer;
+export const {setSession,refreshUser}=authSlice.actions;

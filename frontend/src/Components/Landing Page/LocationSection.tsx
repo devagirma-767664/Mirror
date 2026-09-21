@@ -46,7 +46,7 @@ const LocationSection: React.FC = () => {
           {/* Map Embed */}
           <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-500">
             <iframe
-              title="BarberBook Location"
+              title="Mirror Location"
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1785.6439331769302!2d38.78645012396633!3d8.996841328768163!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x164b850257a12975%3A0xe2468e96cfb05b5b!2sMorning%20Star%20Mall!5e1!3m2!1sen!2set!4v1783607472304!5m2!1sen!2set"
               width="100%"
               height="100%"

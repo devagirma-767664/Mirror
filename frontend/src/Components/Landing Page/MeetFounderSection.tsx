@@ -23,13 +23,13 @@ const MeetFounderSection: React.FC = () => {
             Meet <span className="text-yellow-600">The Founder</span>
           </h3>
           <h4 className="text-2xl font-semibold text-yellow-500">
-            Daniel — Senior Barber
+            Daniel — Senior Stylist
           </h4>
           <p className="text-gray-300 text-lg leading-relaxed">
             With over <span className="text-yellow-400 font-bold">20 years of experience</span>, 
             Daniel has mastered the art of grooming. His journey began with a passion 
-            for precision and style, and today he leads BarberBook with a vision of 
-            excellence and elegance. Every cut, every detail, reflects his dedication 
+            for precision and style, and today he leads Mirror with a vision of
+            excellence and elegance. Every service, every detail, reflects his dedication
             to timeless craftsmanship and modern artistry.
           </p>
           <p className="text-gray-400 italic">

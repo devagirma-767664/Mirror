@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mirror-surface" x1="10" y1="7" x2="55" y2="59" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B68E6"/>
+      <stop offset="1" stop-color="#5944C4"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#mirror-surface)"/>
+  <path d="M32 15.5C23.55 15.5 17 22.25 17 30.5C17 36.18 20.1 41.18 24.7 43.82L22.7 49.5H41.3L39.3 43.82C43.9 41.18 47 36.18 47 30.5C47 22.25 40.45 15.5 32 15.5Z" fill="white" fill-opacity=".97"/>
+  <path d="M23.6 31.3C23.6 25.73 28.04 21.3 33.6 21.3C36.25 21.3 38.66 22.31 40.47 23.97" stroke="#7661DA" stroke-width="3.3" stroke-linecap="round"/>
+  <path d="M39.5 47.75H24.5" stroke="#EAE6FF" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M45.5 13.5V19.5M42.5 16.5H48.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

@@ -2,20 +2,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../api/axios";
 
-// ✅ Check-in appointment (Receptionist) → backend also generates bill
-export const checkInAppointment = createAsyncThunk(
-  "appointments/checkIn",
-  async (appointmentId: string, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.put(`/receptionist/${appointmentId}/checkin`);
-      return response.data; // includes { appointment, bill }
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data || "Failed to check in appointment");
-    }
-  }
-);
-
-// ✅ Fetch all bills (Receptionist/Admin view)
+// Reception payment queue
 export const fetchBills = createAsyncThunk(
   "bills/fetchBills",
   async (_, { rejectWithValue }) => {
@@ -28,25 +15,12 @@ export const fetchBills = createAsyncThunk(
   }
 );
 
-// ✅ Fetch income report (Admin)
-export const fetchIncomeReport = createAsyncThunk(
-  "bills/fetchIncomeReport",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.get("/reports/income");
-      return response.data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data || "Failed to fetch income report");
-    }
-  }
-);
-
-// ✅ Mark bill as paid
+// Reception records collection method and closes the bill
 export const markBillPaid = createAsyncThunk(
   "bills/markPaid",
-  async (billId: number, { rejectWithValue }) => {
+  async ({ billId, ...payment }: { billId: number; accountId: number; cashReceived?:number; transactionReference?:string; paymentVerified?:boolean }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.put(`/receptionist/bills/${billId}/pay`);
+      const res = await axiosInstance.put(`/receptionist/bills/${billId}/pay`, payment);
       return res.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || "Failed to mark bill as paid");

@@ -1,0 +1,22 @@
+export type OwnerReport={
+  shop:{name:string;currency:string;today:string;timezone:string};
+  period:{kind:string;start:string;end:string;through:string;previousStart:string;previousEnd:string;partial:boolean};
+  totals:{sales:number;collected:number;vat:number;expenses:number;customers:number;completed:number;cancelled:number;commission:number;cashMovement:number;operatingBalance:number;averageTicket:number};
+  previous:{sales:number;customers:number;expenses:number};
+  daily:Array<{day:string;customers:number;sales:number;collected:number;expenses:number;completed:number;cancelled:number;working_barbers:number}>;
+  chartDaily?:Array<{day:string;customers:number;sales:number;collected:number;expenses:number;completed:number;cancelled:number;working_barbers:number}>;
+  accounts:Array<{id:number|null;name:string;method:string;count:number;collected:number;expenses:number}>;
+  methods:Array<{method:string;collected:number}>;
+  categories:Array<{category:string;amount:number;count:number}>;
+  expenses:Array<{id:number;day:string;category:string;description:string;amount:number;account:string;recorded_by:string}>;
+  barbers:Array<{id:number;name:string;desk_status:string;customers:number;sales:number;commission:number;completed:number;active_days:number;average_minutes:number|null;pay_mode:string;monthly_salary:number}>;
+  services:Array<{name:string;count:number;sales:number}>;
+  closings:Array<{id:number;day:string;closedBy:string;closedAt:string;notes:string;collected:number;differences:Array<{name:string;counted:number;expected:number;difference:number}>}>;
+  stock:Array<{id:number;name:string;quantity:number;reorder_level:number;unit:string;supplier:string}>;
+  team:Array<{role:string;count:number}>;requests:number;generatedAt:string;
+};
+export const cash=(n:number,currency='ETB')=>`${currency} ${Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2,minimumFractionDigits:2})}`;
+export const compact=(n:number)=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
+export const dayLabel=(day:string,weekday=false)=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',weekday?{weekday:'short',timeZone:'UTC'}:{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+export const periodLabel=(r:OwnerReport)=>`${dayLabel(r.period.start)} – ${dayLabel(r.period.kind==='weekly'?r.period.end:r.period.through)}`;
+export const change=(current:number,previous:number)=>previous?`${current>=previous?'+':''}${(((current-previous)/previous)*100).toFixed(1)}%` : current?'First recorded sales':'No change';

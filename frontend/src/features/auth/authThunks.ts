@@ -6,7 +6,7 @@ import axiosInstance from "../../api/axios";
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (
-    credentials: { email: string; password: string },
+    credentials: { identifier: string; password: string },
     { rejectWithValue }
   ) => {
     try {
@@ -17,14 +17,13 @@ export const loginUser = createAsyncThunk(
         ...response.data.user,
         role: response.data.user.role?.toLowerCase(),
       };
-
       // ✅ Save token + user to localStorage
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(normalizedUser));
 
       return { ...response.data, user: normalizedUser };
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Login failed");
+      return rejectWithValue(typeof err==='string'?err:err.response?.data?.error || "Login failed");
     }
   }
 );

@@ -1,6 +1,6 @@
 // src/features/bills/billsSlice.ts
 import { createSlice } from "@reduxjs/toolkit";
-import { checkInAppointment, fetchBills, fetchIncomeReport, markBillPaid } from "./billsThuks";
+import { fetchBills, markBillPaid } from "./billsThuks";
 
 interface Bill {
   id: string;
@@ -17,14 +17,12 @@ interface Bill {
 
 interface BillsState {
   list: Bill[];
-  incomeReport: any | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: BillsState = {
   list: [],
-  incomeReport: null,
   loading: false,
   error: null,
 };
@@ -34,24 +32,7 @@ const billsSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    // ✅ Check-in (auto generates bill)
-    builder.addCase(checkInAppointment.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(checkInAppointment.fulfilled, (state, action) => {
-      state.loading = false;
-      // backend returns { appointment, bill }
-      if (action.payload.bill) {
-        state.list.push(action.payload.bill);
-      }
-    });
-    builder.addCase(checkInAppointment.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
-    });
-
-    // ✅ Fetch Bills
+    // Fetch bills after the barber has completed the service
     builder.addCase(fetchBills.pending, (state) => {
       state.loading = true;
       state.error = null;
@@ -65,12 +46,7 @@ const billsSlice = createSlice({
       state.error = action.payload as string;
     });
 
-    // ✅ Fetch Income Report
-    builder.addCase(fetchIncomeReport.fulfilled, (state, action) => {
-      state.incomeReport = action.payload;
-    });
-
-    // ✅ Mark Bill Paid
+    // Mark collection complete
     builder.addCase(markBillPaid.fulfilled, (state, action) => {
       const updated = action.payload;
       const idx = state.list.findIndex((b) => b.id === updated.id);

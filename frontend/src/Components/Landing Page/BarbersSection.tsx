@@ -1,6 +1,6 @@
 // src/Components/Landing Page/BarbersSection.tsx
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../api/axios";
+import axiosInstance, { API_URL } from "../../api/axios";
 import { Link } from "react-router-dom";
 
 interface Barber {
@@ -21,7 +21,7 @@ const BarbersSection: React.FC = () => {
         const response = await axiosInstance.get("/barber/barbers");
         setBarbers(response.data);
       } catch (err: any) {
-        setError(err.message || "Failed to fetch barbers");
+        setError(err.message || "Failed to fetch stylists");
       } finally {
         setLoading(false);
       }
@@ -40,7 +40,7 @@ const BarbersSection: React.FC = () => {
           <span className="text-yellow-600">The</span> Artists
         </h3>
 
-        {loading && <p className="text-center text-white">Loading barbers...</p>}
+        {loading && <p className="text-center text-white">Loading stylists...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
 
         {/* Barbers Grid */}
@@ -53,7 +53,7 @@ const BarbersSection: React.FC = () => {
               <div className="overflow-hidden rounded-lg mb-4">
                 {barber.profile_picture ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL}${barber.profile_picture}`}
+                    src={`${API_URL}${barber.profile_picture}`}
                     alt={barber.name}
                     className="w-full h-56 object-cover rounded-md group-hover:scale-110 transition-transform duration-500"
                   />

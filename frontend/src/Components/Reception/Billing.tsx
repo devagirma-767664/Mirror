@@ -1,121 +1,33 @@
-// src/Components/Receptionist/Billing.tsx
-import React, { useState, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { fetchBills, markBillPaid } from "../../features/bills/billsThuks";
-import { generatePDF } from "../../utils/pdfUtils";
+import { useState } from 'react';
+import { FiCreditCard, FiSearch } from 'react-icons/fi';
+import Checkout, { type CheckoutTarget } from './Checkout';
+import {useDeskResource,type Bill,type Board,type FinanceSettings,amount,visitName,dateTime,methodName} from './desk';
 
-const Billing: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { list, loading, error } = useAppSelector((state) => state.bills);
-
-  const [selectedBill, setSelectedBill] = useState<any | null>(null);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-
-  // ✅ Fetch bills when component mounts
-  useEffect(() => {
-    dispatch(fetchBills());
-  }, [dispatch]);
-
-  // ✅ Only show unpaid bills
-  const unpaidBills = list.filter((bill) => !bill.paid);
-
-  const handleViewBill = (bill: any) => {
-    // Automatically download PDF
-    generatePDF(bill);
-
-    // Open summary popup
-    setSelectedBill(bill);
-  };
-
-  const handleMarkPaid = async () => {
-    if (!selectedBill) return;
-    await dispatch(markBillPaid(selectedBill.id));
-    setSelectedBill(null);
-    setPaymentSuccess(true);
-
-    // ✅ Refresh bills after payment
-    dispatch(fetchBills());
-  };
-
-  return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-bold text-yellow-600 mb-4">Billing Section</h2>
-
-      {loading && <p className="text-gray-500">Loading bills...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
-
-      <ul>
-        {unpaidBills.map((bill) => (
-          <li
-            key={bill.id}
-            className="flex justify-between items-center border-b py-2"
-          >
-            <span className="text-gray-700 font-medium">
-              {bill.customer_name} — {bill.service_name}
-            </span>
-            <button
-              onClick={() => handleViewBill(bill)}
-              className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 transition"
-            >
-              View Bill
-            </button>
-          </li>
-        ))}
-        {unpaidBills.length === 0 && !loading && !error && (
-          <p className="text-gray-500 text-center py-4">No unpaid bills.</p>
-        )}
-      </ul>
-
-      {/* Bill Summary Popup */}
-      {selectedBill && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white w-[28rem] p-8 rounded-xl shadow-2xl">
-            <h3 className="text-2xl font-bold mb-6 text-yellow-600">Bill Summary</h3>
-            <div className="space-y-2 text-gray-700">
-              <p><span className="font-semibold">Customer:</span> {selectedBill.customer_name}</p>
-              <p><span className="font-semibold">Service:</span> {selectedBill.service_name}</p>
-              <p><span className="font-semibold">Barber:</span> {selectedBill.barber_name}</p>
-              <p>
-                <span className="font-semibold">Total:</span> $
-                {Number(selectedBill.total).toFixed(2)}
-              </p>
-            </div>
-            <div className="mt-6 flex gap-3 justify-end">
-              <button
-                onClick={handleMarkPaid}
-                className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition"
-              >
-                Mark as Paid
-              </button>
-              <button
-                onClick={() => setSelectedBill(null)}
-                className="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Success Popup */}
-      {paymentSuccess && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white w-96 p-8 rounded-xl shadow-2xl text-center">
-            <div className="text-green-600 text-7xl mb-4">✔️</div>
-            <h3 className="text-2xl font-bold mb-2 text-green-700">Payment Completed</h3>
-            <p className="text-gray-600 mb-6">The bill has been marked as paid successfully.</p>
-            <button
-              onClick={() => setPaymentSuccess(false)}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Billing;
+export default function Billing() {
+  const bills=useDeskResource<Bill[]>('/receptionist/bills');
+  const board=useDeskResource<Board>('/receptionist/desk');
+  const finance=useDeskResource<FinanceSettings>('/receptionist/finance');
+  const [selected,setSelected]=useState<CheckoutTarget|null>(null);
+  const [tab,setTab]=useState('ready');
+  const [query,setQuery]=useState('');
+  const currency=finance.data?.currency||'ETB';
+  const billed=new Set(bills.data?.map(b=>b.appointment_id)||[]);
+  const ready:CheckoutTarget[]=[...(board.data?.visits.filter(v=>!billed.has(v.id)).map(visit=>({visit}))||[]),...(bills.data?.filter(b=>!b.paid).map(bill=>({bill}))||[])];
+  const rows:CheckoutTarget[]=tab==='ready'?ready:(bills.data||[]).filter(b=>b.paid).map(bill=>({bill}));
+  const filtered=rows.filter(target=>{const item=target.bill||target.visit;return !query||[visitName(item),item.barber_name,item.service_name,target.bill?.payment_account_name].some(v=>v?.toLowerCase().includes(query.toLowerCase()));});
+  const loading=bills.loading||board.loading;
+  const error=bills.error||board.error||finance.error;
+  const refresh=()=>{void bills.refresh();void board.refresh();};
+  return <section className="reception-module-view desk-module">
+    <header className="admin-module-header"><div><p className="admin-eyebrow">TAKE PAYMENT</p><h2 className="admin-module-title">Payments</h2><p className="admin-module-subtitle">Choose the customer, check the services, then take payment.</p></div></header>
+    {error&&<div className="admin-inline-error" role="alert">{error} <button className="admin-inline-link" onClick={()=>{refresh();void finance.refresh();}}>Retry</button></div>}
+    <div className="desk-payment-filters"><div className="desk-tabs"><button className={tab==='ready'?'is-active':''} onClick={()=>setTab('ready')}>Ready to pay <b>{ready.length}</b></button><button className={tab==='paid'?'is-active':''} onClick={()=>setTab('paid')}>Paid today</button></div><label className="admin-search-box"><FiSearch/><input aria-label="Find payment" placeholder="Customer, stylist, service, or account" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
+    <section className="admin-module-card desk-payments-card"><div className="admin-module-toolbar"><div><p className="admin-card-kicker">{tab==='ready'?'ASSIGNED CUSTOMERS':'COLLECTED PAYMENTS'}</p><h3>{tab==='ready'?`Ready to pay · ${ready.length}`:'Payment history'}</h3></div></div>
+      {tab==='ready'&&<p className="desk-help">These customers are waiting or getting service. Take payment only when they come back to reception.</p>}
+      {loading&&<div className="admin-inline-state">Loading payments…</div>}
+      <div className="desk-payment-list">{filtered.map(target=>{const item=target.bill||target.visit;const bill=target.bill;const subtotal=bill?bill.subtotal??Number(bill.total)-Number(bill.tax||0):target.visit!.service_price;return <article className="desk-payment-row" key={bill?`bill-${bill.id}`:`visit-${item.id}`}><span className="reception-action-icon orange"><FiCreditCard/></span><div><strong>{visitName(item)} · {item.barber_name}</strong><span>{item.service_name}</span><small>{bill?.paid?`${methodName(bill.payment_method||'unknown')} · ${bill.payment_account_name||'Account not recorded'}`:dateTime(bill?bill.generated_at:target.visit!.start_time)}</small></div><strong>{bill?.paid?amount(bill.total,currency):subtotal!=null?amount(subtotal,currency):'Confirm services'}</strong><button className={bill?.paid?'admin-secondary-button':'admin-primary-button'} onClick={()=>setSelected(target)}>{bill?.paid?'Receipt':'Collect payment'}</button></article>;})}</div>
+      {!loading&&!error&&!filtered.length&&<div className="admin-empty-state">{query?'No payments match your search.':tab==='ready'?'No customer is waiting to pay. Add a customer from the stylist list.':'Payments taken today will show here.'}</div>}
+    </section>
+    {selected&&<Checkout target={selected} onClose={()=>setSelected(null)} onPaid={refresh}/>}
+  </section>;
+}

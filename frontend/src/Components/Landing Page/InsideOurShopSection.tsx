@@ -16,12 +16,12 @@ const InsideOurShopSection: React.FC = () => {
             Inside <span className="text-yellow-600">Our Studio</span>
           </h3>
           <p className="text-gray-300 text-lg">
-            Step into BarberBook and experience a modern grooming space designed
-            for comfort and style. From premium barber chairs to a welcoming
+            Step into Mirror and experience a modern styling space designed
+            for comfort and style. From comfortable styling chairs to a welcoming
             lounge, every detail reflects our commitment to quality.
           </p>
           <ul className="space-y-3 text-gray-300">
-            <li>💺 Comfortable, high-end barber chairs</li>
+            <li>💺 Comfortable, high-end styling chairs</li>
             <li>🪞 Clean and stylish interiors</li>
             <li>✂️ Professional tools and equipment</li>
             <li>🎶 Relaxing atmosphere with music</li>

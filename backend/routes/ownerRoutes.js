@@ -1,0 +1,14 @@
+const router=require('express').Router();
+const auth=require('../middleware/authMiddleware');
+const role=require('../middleware/roleMiddleware');
+const Reports=require('../models/ownerReportModel');
+const Telegram=require('../models/telegramModel');
+const run=fn=>async(req,res)=>{try{res.json(await fn(req));}catch(error){res.status(400).json({error:error.message});}};
+router.use(auth,role(['admin']));
+router.get('/owner/report',run(r=>Reports.report(r.user.shopId,r.query)));
+router.get('/owner/inventory',run(r=>require('../models/operationsModel').getInventory(r.user.shopId)));
+router.get('/owner/telegram',run(r=>Telegram.settings(r.user.shopId)));
+router.put('/owner/telegram',run(r=>Telegram.save(r.user.shopId,r.body)));
+router.post('/owner/telegram/verify',run(r=>Telegram.verify(r.user.shopId)));
+router.post('/owner/telegram/:id/retry',run(r=>Telegram.retry(r.user.shopId,r.params.id)));
+module.exports=router;

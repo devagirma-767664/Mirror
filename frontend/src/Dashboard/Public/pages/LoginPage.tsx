@@ -1,96 +1,69 @@
-// src/pages/LoginPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiEye, FiEyeOff, FiLock, FiSmartphone } from "react-icons/fi";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-import { loginUser } from "../../../features/auth/authThunks";
-import { useNavigate } from "react-router-dom";
+import { loginUser, logoutUser } from "../../../features/auth/authThunks";
 
 const LoginPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location=useLocation();
   const { loading, error, user, token } = useAppSelector((state) => state.auth);
-
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(loginUser({ email, password }));
+  useEffect(() => {
+    if (!user || !token) return;
+    const destinations: Record<string, string> = {
+      admin: "/admin",
+      barber: "/barber",
+      receptionist: "/receptionist",
+      platform_admin: "/platform",
+      customer: "/booking",
+    };
+    const destination = destinations[String(user.role || "").toLowerCase()];
+    if (destination) {
+      const from=location.state?.from;
+      navigate(typeof from==='string'&&(from===destination||from.startsWith(destination+'?'))?from:destination, { replace: true });
+      return;
+    }
+    setAccessError("This account does not have a Mirror page to open.");
+    dispatch(logoutUser());
+  }, [dispatch, navigate, token, user, location.state]);
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setAccessError(null);
+    dispatch(loginUser({ identifier: identifier.trim(), password }));
   };
 
-  // 🔹 Redirect based on role once login succeeds
-  useEffect(() => {
-    if (user && token) {
-      switch (user.role) {
-        case "admin":
-          navigate("/admin");
-          break;
-        case "barber":
-          navigate("/barber");
-          break;
-        case "receptionist":
-          navigate("/receptionist");
-          break;
-        case "customer":
-          navigate("/customer");
-          break;
-        default:
-          navigate("/dashboard");
-      }
-    }
-  }, [user, token, navigate]);
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md"
-      >
-        <h2 className="text-2xl font-bold text-center text-yellow-600 mb-6">
-          Staff Login
-        </h2>
+    <main className="workspace-login-page">
+      <div className="workspace-login-shell">
+        <section className="workspace-login-panel">
+          <Link className="workspace-login-brand" to="/" aria-label="Mirror public site"><span><img src="/mirror.svg" alt=""/></span><strong>Mirror</strong></Link>
+          <div className="workspace-login-copy"><p className="admin-eyebrow">YOUR MIRROR PAGE</p><h1>Welcome back</h1><p>Enter your phone or email and password. Mirror opens the right page for you.</p></div>
 
-        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+          <form className="workspace-login-form" onSubmit={handleSubmit}>
+            {(error || accessError) && <div className="workspace-login-error" role="alert">{accessError || error}</div>}
+            <label className="workspace-login-field"><span>Phone number or owner email</span><div><FiSmartphone /><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="0912345678" autoComplete="username" inputMode="tel" required /></div><small>Staff use their phone number. Shop and platform owners use email.</small></label>
+            <label className="workspace-login-field"><span>Password</span><div><FiLock /><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password" required /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <FiEyeOff /> : <FiEye />}</button></div></label>
+            <button className="workspace-login-submit" type="submit" disabled={loading}><span>{loading ? "Signing in…" : "Sign in"}</span>{!loading && <FiArrowRight />}</button>
+          </form>
 
-        <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600"
-            required
-          />
-        </div>
+          <p className="workspace-login-help">Do you own a salon or shop? <Link to="/signup">Start 7 days free</Link>. Staff can ask the owner to make their account.</p>
+          <Link className="workspace-login-back" to="/"><FiArrowLeft /> Back to Mirror website</Link>
+        </section>
 
-        <div className="mb-6">
-          <label className="block text-gray-700 font-medium mb-2">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-yellow-600 text-white py-2 rounded-lg shadow hover:bg-yellow-700 transition font-medium"
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-
-        {/* ✅ Go back to Home Page button */}
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="w-full mt-4 bg-gray-300 text-gray-800 py-2 rounded-lg shadow hover:bg-gray-400 transition font-medium"
-        >
-          Go back to Home Page
-        </button>
-      </form>
-    </div>
+        <aside className="workspace-login-visual" aria-hidden="true">
+          <div className="workspace-login-orb workspace-login-orb-one" /><div className="workspace-login-orb workspace-login-orb-two" />
+          <div className="workspace-login-visual-content"><span className="workspace-login-visual-icon"><img src="/mirror.svg" alt=""/></span><p>ONE SIMPLE SYSTEM</p><h2>Keep your shop day clear.</h2><div className="workspace-login-benefits"><span><FiCheckCircle /> See your staff and money</span><span><FiCheckCircle /> Manage reception easily</span><span><FiCheckCircle /> See each stylist’s customers</span></div></div>
+          <div className="workspace-login-preview"><div className="workspace-login-preview-top"><span /><span /><span /></div><div className="workspace-login-preview-body"><div className="workspace-login-preview-nav" /><div className="workspace-login-preview-main"><span /><div><i /><i /><i /></div><b /><b /></div></div></div>
+        </aside>
+      </div>
+    </main>
   );
 };
 

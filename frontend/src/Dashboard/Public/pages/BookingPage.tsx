@@ -1,25 +1,35 @@
-// src/dashboards/BookingPage.tsx
-import React, { useState, useEffect } from "react";
-import axiosInstance from "../../../api/axios";
-import BookingSummary from "../../../Components/Landing Page/BookingSummary"; // ✅ fixed path
+import React, { useEffect, useMemo, useState } from "react";
+import { FiArrowLeft, FiCalendar, FiCheck, FiClock, FiScissors, FiUser } from "react-icons/fi";
+import { Link, useLocation, useParams } from "react-router-dom";
+import axiosInstance, { API_URL } from "../../../api/axios";
 import { useAppDispatch } from "../../../app/hooks";
 import { bookAppointment } from "../../../features/appointments/appointmentsThunks";
 
 interface Barber {
-  id: string;
+  id: string | number;
   name: string;
   profile_picture: string | null;
 }
 
 interface Service {
-  id: string;
+  id: string | number;
   name: string;
-  image?: string;
+  price?: string | number;
+  duration?: number;
 }
+
+const slots = Array.from({ length: 28 }, (_, index) => {
+  const minutes = 8 * 60 + index * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
 
 const BookingPage: React.FC = () => {
   const dispatch = useAppDispatch();
-
+  const { shopSlug } = useParams();
+  const location = useLocation();
+  const queryShop = new URLSearchParams(location.search).get("shop");
+  const homePath = shopSlug ? `/s/${shopSlug}` : queryShop ? `/s/${encodeURIComponent(queryShop)}` : "/";
+  const [shop, setShop] = useState<any>(null);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber] = useState("");
@@ -28,315 +38,143 @@ const BookingPage: React.FC = () => {
   const [time, setTime] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [barberAppointments, setBarberAppointments] = useState<string[]>([]);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-
-  
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const barberRes = await axiosInstance.get("/barber/barbers");
-        setBarbers(barberRes.data);
-
-        const serviceRes = await axiosInstance.get("/services");
-        setServices(serviceRes.data);
-      } catch (err) {
-        console.error("Failed to fetch booking data", err);
-      }
-    };
-    fetchData();
-  }, []);
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-  if (selectedBarber && date) {
-    axiosInstance.get(`/appointments/barber/${selectedBarber}`)
-      .then((res) => {
-        // Filter appointments for the selected date
-        const times = res.data
-          .filter((appt: any) => appt.start_time.startsWith(date))
-          .map((appt: any) => appt.start_time);
-        setBarberAppointments(times);
+    const params = shopSlug || queryShop ? { shop: shopSlug || queryShop } : undefined;
+    Promise.all([
+      axiosInstance.get("/public/shop", { params }),
+      axiosInstance.get("/barber/barbers", { params }),
+      axiosInstance.get("/services", { params }),
+    ])
+      .then(([shopResult, barberResult, serviceResult]) => {
+        setShop(shopResult.data);
+        setBarbers(barberResult.data);
+        setServices(serviceResult.data);
       })
-      .catch((err) => console.error("Failed to fetch barber appointments", err));
-  }
-}, [selectedBarber, date]);
+      .catch((requestError) => setError(typeof requestError === "string" ? requestError : "Could not load booking details."))
+      .finally(() => setLoading(false));
+  }, [queryShop, shopSlug]);
 
-  const handleBooking = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(
-      bookAppointment({
-        customerName,
-        customerPhone,
-        barberId: selectedBarber,
-        serviceId: selectedService,
-        startTime: `${date} ${time}`,
+  useEffect(() => {
+    if (!selectedBarber || !date) {
+      setBookedTimes([]);
+      return;
+    }
+    axiosInstance
+      .get(`/appointments/barber/${selectedBarber}`)
+      .then((response) => {
+        const times = response.data
+          .map((appointment: any) => new Date(appointment.start_time))
+          .filter((appointmentDate: Date) => {
+            const localDate = `${appointmentDate.getFullYear()}-${String(appointmentDate.getMonth() + 1).padStart(2, "0")}-${String(appointmentDate.getDate()).padStart(2, "0")}`;
+            return localDate === date;
+          })
+          .map((appointmentDate: Date) => `${String(appointmentDate.getHours()).padStart(2, "0")}:${String(appointmentDate.getMinutes()).padStart(2, "0")}`);
+        setBookedTimes(times);
       })
-    )
-    .unwrap()
-    .then(() => setShowConfirmation(true))
-    .catch((err) => console.error("Booking failed", err));
+      .catch((requestError) => setError(typeof requestError === "string" ? requestError : "Could not load available times."));
+  }, [date, selectedBarber]);
+
+  const barber = useMemo(() => barbers.find((item) => String(item.id) === selectedBarber), [barbers, selectedBarber]);
+  const service = useMemo(() => services.find((item) => String(item.id) === selectedService), [services, selectedService]);
+  const today = new Date();
+  const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      await dispatch(bookAppointment({ customerName, customerPhone, barberId: selectedBarber, serviceId: selectedService, startTime: `${date} ${time}` })).unwrap();
+      setConfirmed(true);
+    } catch (requestError) {
+      setError(typeof requestError === "string" ? requestError : "Could not make your booking. Please try another time.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  const picture = (path: string | null) => !path ? null : path.startsWith("http") ? path : `${API_URL}${path}`;
+
+  if (loading) return <div className="public-booking-loading"><img src="/mirror.svg" alt=""/> Opening booking…</div>;
+
   return (
-    <section className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-800 to-black py-20 px-6">
-      <div className="max-w-2xl mx-auto bg-white/10 backdrop-blur-md rounded-xl shadow-lg p-6 text-sm">
-        <h2 className="text-3xl md:text-3xl font-bold text-center text-yellow-500 mb-12">
-          Book Your Appointment
-        </h2>
+    <main className="public-booking-page">
+      <header className="public-booking-header">
+        <Link to={homePath}><FiArrowLeft /> <span>Back to shop</span></Link>
+        <div className="public-booking-brand"><span><img src="/mirror.svg" alt=""/></span><strong>{shop?.name || "Mirror"}</strong></div>
+        <div className="public-booking-plus">ONLINE BOOKING</div>
+      </header>
 
-        <form onSubmit={handleBooking} className="space-y-10">
-          {/* Customer Info */}
-          <h3 className="text-xl font-bold text-yellow-500 mb-8">👤 Customer Info</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-white/20 bg-gray-800 text-white focus:ring-2 focus:ring-purple-400"
-              required
-            />
-            <input
-              type="tel"
-              placeholder="Phone Number"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-white/20 bg-gray-800 text-white focus:ring-2 focus:ring-purple-400"
-              required
-            />
-          </div>
-
-          {/* Barber Selection */}
-          <h3 className="text-xl font-bold text-yellow-400 mb-8">✂️ Choose Barber</h3>
-          <BarberSelect barbers={barbers} selectedBarber={selectedBarber} setSelectedBarber={setSelectedBarber} />
-
-          {/* Service Selection */}
-          <h3 className="text-xl font-bold text-yellow-500 mb-8">💈 Choose Service</h3>
-          <ServiceSelect services={services} selectedService={selectedService} setSelectedService={setSelectedService} />
-
-          {/* Date & Time Picker */}
-          <h3 className="text-xl font-bold text-yellow-500 mb-8">📅 Choose Date & Time</h3>
-          <DateTimePicker 
-            date={date} 
-            setDate={setDate} 
-            time={time} 
-            setTime={setTime}
-            bookedTimes={barberAppointments}
-          />
-
-          {/* Booking Summary */}
-          <h3 className="text-2xl font-bold text-yellow-500 mb-10">✅ Booking Summary</h3>
-          <BookingSummary
-            barberName={barbers.find((b) => b.id === selectedBarber)?.name || ""}
-            serviceName={services.find((s) => s.id === selectedService)?.name || ""}
-            date={date}
-            time={time}
-          />
-
-          {/* Confirm Button + Home Button */}
-          <div className="flex flex-col items-center gap-4">
-            <ConfirmButton />
-
-            <button
-              type="button"
-              onClick={() => (window.location.href = "/")}
-              className="bg-gray-300 text-gray-800 px-6 py-2 rounded-lg shadow hover:bg-gray-400 transition font-medium"
-            >
-              Go back to Home Page
-            </button>
-          </div>
-
-
-        </form>
-      </div>
-
-          {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-            <h2 className="text-2xl font-bold text-green-400 mb-4">🎉 Booking Confirmed!</h2>
-            <p className="mb-6">
-              Your appointment has been successfully booked with{" "}
-              <span className="font-semibold">
-                {barbers.find((b) => b.id === selectedBarber)?.name}
-              </span>.
-            </p>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="bg-gray-600 px-6 py-2 rounded-lg hover:bg-gray-700 transition"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => (window.location.href = "/")}
-                className="bg-yellow-600 px-6 py-2 rounded-lg hover:bg-yellow-700 transition"
-              >
-                Go back to Home Page
-              </button>
-            </div>
-          </div>
+      <section className="public-booking-shell">
+        <div className="public-booking-intro">
+          <p>ONLINE BOOKING</p>
+          <h1>Book your visit.</h1>
+          <span>Choose your stylist, service, date, and time.</span>
         </div>
-      )}
 
-    </section>
+        <form onSubmit={submit} className="public-booking-form">
+          <section className="public-booking-card">
+            <div className="public-booking-step"><b>1</b><div><h2>Choose your stylist</h2><p>Choose the person you want.</p></div></div>
+            <div className="public-booking-choice-grid">
+              {barbers.map((item) => {
+                const selected = String(item.id) === selectedBarber;
+                return <button type="button" key={item.id} className={`public-booking-choice ${selected ? "is-selected" : ""}`} onClick={() => setSelectedBarber(String(item.id))}>
+                  {picture(item.profile_picture) ? <img src={picture(item.profile_picture)!} alt="" /> : <span className="public-booking-avatar"><FiUser /></span>}
+                  <strong>{item.name}</strong>{selected && <i><FiCheck /></i>}
+                </button>;
+              })}
+            </div>
+          </section>
+
+          <section className="public-booking-card">
+            <div className="public-booking-step"><b>2</b><div><h2>Choose a service</h2><p>These are the shop’s current prices.</p></div></div>
+            <div className="public-booking-service-list">
+              {services.map((item) => {
+                const selected = String(item.id) === selectedService;
+                return <button type="button" key={item.id} className={`public-booking-service ${selected ? "is-selected" : ""}`} onClick={() => setSelectedService(String(item.id))}>
+                  <span><FiScissors /></span><div><strong>{item.name}</strong>{item.duration ? <small>{item.duration} min</small> : null}</div>
+                  {item.price !== undefined && <b>{shop?.currency || "ETB"} {Number(item.price).toFixed(0)}</b>}{selected && <i><FiCheck /></i>}
+                </button>;
+              })}
+            </div>
+          </section>
+
+          <section className="public-booking-card">
+            <div className="public-booking-step"><b>3</b><div><h2>Choose a time</h2><p>Times you cannot choose are already booked.</p></div></div>
+            <label className="public-booking-date"><FiCalendar /><input type="date" value={date} min={minimumDate} onChange={(event) => { setDate(event.target.value); setTime(""); }} required /></label>
+            {date && selectedBarber ? <div className="public-booking-slots">{slots.map((slot) => {
+              const unavailable = bookedTimes.includes(slot);
+              return <button type="button" key={slot} disabled={unavailable} className={time === slot ? "is-selected" : ""} onClick={() => setTime(slot)}>{slot}</button>;
+            })}</div> : <div className="public-booking-prompt"><FiClock /> Choose a stylist and date to see times.</div>}
+          </section>
+
+          <section className="public-booking-card">
+            <div className="public-booking-step"><b>4</b><div><h2>Your details</h2><p>The shop uses these details for this booking only.</p></div></div>
+            <div className="public-booking-fields">
+              <label><span>Full name</span><input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Your name" required /></label>
+              <label><span>Phone number</span><input type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="09…" required /></label>
+            </div>
+          </section>
+
+          <aside className="public-booking-summary">
+            <div><span><FiUser /></span><p>STYLIST<strong>{barber?.name || "Choose a stylist"}</strong></p></div>
+            <div><span><FiScissors /></span><p>SERVICE<strong>{service?.name || "Choose a service"}</strong></p></div>
+            <div><span><FiCalendar /></span><p>WHEN<strong>{date && time ? `${date} at ${time}` : "Choose date and time"}</strong></p></div>
+            <button type="submit" disabled={!barber || !service || !date || !time || submitting}>{submitting ? "Booking…" : "Confirm booking"} <FiCheck /></button>
+          </aside>
+          {error && <p className="public-booking-error">{error}</p>}
+        </form>
+      </section>
+
+      {confirmed && <div className="public-booking-modal" role="dialog" aria-modal="true"><div><span><FiCheck /></span><p>BOOKING SAVED</p><h2>Your visit is booked.</h2><div><strong>{barber?.name}</strong><small>{service?.name} · {date} at {time}</small></div><Link to={homePath}>Back to shop</Link></div></div>}
+    </main>
   );
 };
 
 export default BookingPage;
-
-// Barber Select (cards)
-const BarberSelect = ({
-  barbers,
-  selectedBarber,
-  setSelectedBarber,
-}: {
-  barbers: Barber[];
-  selectedBarber: string;
-  setSelectedBarber: React.Dispatch<React.SetStateAction<string>>;
-}) => (
-  <div className="grid md:grid-cols-2 gap-6">
-    {barbers.map((barber) => (
-      <div
-        key={barber.id}
-        onClick={() => setSelectedBarber(barber.id)}
-        className={`cursor-pointer p-4 rounded-lg border flex items-center gap-4 transition ${
-          selectedBarber === barber.id ? "border-yellow-600 bg-gray-700" : "border-white/20 bg-gray-800"
-        }`}
-      >
-        {barber.profile_picture ? (
-          <img
-            src={`${import.meta.env.VITE_API_URL}${barber.profile_picture}`}
-            alt={barber.name}
-            className="w-16 h-16 rounded-full object-cover border-2 border-yellow-600"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-600">
-            No Image
-          </div>
-        )}
-        <span className="text-white font-semibold">{barber.name}</span>
-      </div>
-    ))}
-  </div>
-);
-
-// Service Select (cards)
-const ServiceSelect = ({
-  services,
-  selectedService,
-  setSelectedService,
-}: {
-  services: Service[];
-  selectedService: string;
-  setSelectedService: React.Dispatch<React.SetStateAction<string>>;
-}) => (
-  <div className="grid md:grid-cols-2 gap-6">
-    {services.map((service) => (
-      <div
-        key={service.id}
-        onClick={() => setSelectedService(service.id)}
-        className={`cursor-pointer p-4 rounded-lg border flex items-center gap-4 transition ${
-          selectedService === service.id ? "border-yellow-600 bg-gray-700" : "border-white/20 bg-gray-800"
-        }`}
-      >
-        {service.image ? (
-          <img
-            src={service.image}
-            alt={service.name}
-            className="w-16 h-16 rounded-md object-cover border-2 border-yellow-600"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-md bg-gray-300 flex items-center justify-center text-gray-600">
-            No Image
-          </div>
-        )}
-        <span className="text-white font-semibold">{service.name}</span>
-      </div>
-    ))}
-  </div>
-);
-
-// Date & Time Picker
-const DateTimePicker = ({
-  date,
-  setDate,
-  time,
-  setTime,
-  bookedTimes,
-}: {
-  date: string;
-  setDate: React.Dispatch<React.SetStateAction<string>>;
-  time: string;
-  setTime: React.Dispatch<React.SetStateAction<string>>;
-  bookedTimes: string[];
-}) => {
-  const generateTimeSlots = () => {
-    const slots: string[] = [];
-    for (let hour = 8; hour <= 21; hour++) {
-      slots.push(`${hour.toString().padStart(2, "0")}:00`);
-    }
-    return slots;
-  };
-  const timeSlots = generateTimeSlots();
-
-  // Normalize bookedTimes to "YYYY-MM-DD HH:mm"
-  const normalizedBooked = bookedTimes.map((t) => {
-    const d = new Date(t);
-    return d.toISOString().slice(0, 16).replace("T", " "); // e.g. "2026-07-17 10:00"
-  });
-
-  return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        className="w-full px-4 py-3 rounded-lg border border-white/20 bg-gray-800 text-white focus:ring-2 focus:ring-blue-400 text-lg"
-        required
-      />
-
-      <div className="grid grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2 bg-gray-800 rounded-lg border border-white/20">
-        {timeSlots.map((slot) => {
-          const fullSlot = `${date} ${slot}`;
-          const isBooked = normalizedBooked.includes(fullSlot);
-
-          return (
-            <button
-              key={slot}
-              type="button"
-              onClick={() => !isBooked && setTime(slot)}
-              disabled={isBooked}
-              className={`text-center py-2 rounded-md text-lg transition w-full ${
-                isBooked
-                  ? "bg-red-600 text-white opacity-50 cursor-not-allowed"
-                  : time === slot
-                  ? "bg-yellow-600 text-white font-semibold"
-                  : "bg-gray-700 text-gray-200 hover:bg-yellow-600 hover:text-white"
-              }`}
-              title={isBooked ? "Booked" : "Available"}
-            >
-              {slot}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-
-
-
-// Confirm Button
-const ConfirmButton = () => (
-  <div className="flex justify-center">
-    <button
-      type="submit"
-      className="bg-yellow-600 text-white px-10 py-4 rounded-lg shadow hover:bg-yellow-700 transition font-bold text-lg"
-    >
-      Confirm Booking
-    </button>
-  </div>
-);
-

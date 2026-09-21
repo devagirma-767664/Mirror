@@ -1,156 +1,62 @@
-// src/Components/Receptionist/WalkInRegistration.tsx
-import React, { useState, useEffect } from "react";
-import { useAppDispatch } from "../../app/hooks";
-import { assignWalkIn } from "../../features/appointments/appointmentsThunks";
+import React, { useEffect, useMemo, useState } from "react";
+import { FiCheckCircle, FiPlus, FiScissors, FiUsers, FiX } from "react-icons/fi";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { assignWalkIn, fetchAppointments } from "../../features/appointments/appointmentsThunks";
 import axiosInstance from "../../api/axios";
-import { fetchBills } from "../../features/bills/billsThuks";
 
-interface Barber {
-  id: string;
-  name: string;
-  profile_picture?: string | null;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  image?: string;
-}
+type Barber = { id: string; name: string; profile_picture?: string | null };
+type Service = { id: string; name: string; price?: number | string; duration?: number | string };
 
 const WalkInRegistration: React.FC = () => {
   const dispatch = useAppDispatch();
+  const currency = useAppSelector((state) => state.auth.user?.shop?.currency || "ETB");
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-
-  const [name, setName] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [barberId, setBarberId] = useState("");
-  const [successPopup, setSuccessPopup] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [assignedBarberName, setAssignedBarberName] = useState<string | null>(null);
+  const money = (value: number | string) => `${currency} ${Number(value || 0).toFixed(2)}`;
 
-  // ✅ Fetch barbers and services on mount
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const barberRes = await axiosInstance.get("/barber/barbers");
-        setBarbers(barberRes.data);
-
-        const serviceRes = await axiosInstance.get("/services");
-        setServices(serviceRes.data);
-      } catch (err) {
-        console.error("Failed to fetch barbers/services", err);
-      }
-    };
-    fetchData();
+    Promise.all([axiosInstance.get("/barber/barbers"), axiosInstance.get("/services")])
+      .then(([barberResponse, serviceResponse]) => { setBarbers(barberResponse.data || []); setServices(serviceResponse.data || []); })
+      .catch((requestError) => setError(typeof requestError === "string" ? requestError : "Unable to load stylists and services."))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await dispatch(assignWalkIn({ customerName: name, serviceId, barberId }));
+  const selectedBarber = useMemo(() => barbers.find((barber) => String(barber.id) === barberId), [barberId, barbers]);
+  const selectedService = useMemo(() => services.find((service) => String(service.id) === serviceId), [serviceId, services]);
 
-    dispatch(fetchBills());
-
-    setName("");
-    setServiceId("");
-    setBarberId("");
-    setSuccessPopup(true); 
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+      if (!barberId || !serviceId) return setError("Choose the customer’s stylist and service.");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await dispatch(assignWalkIn({ customerName: "Walk-in customer", serviceId, barberId })).unwrap();
+      await dispatch(fetchAppointments());
+      setAssignedBarberName(selectedBarber?.name || "the selected stylist");
+      setBarberId("");
+      setServiceId("");
+    } catch (requestError: any) {
+      setError(typeof requestError === "string" ? requestError : "Unable to assign this walk-in.");
+    } finally { setSubmitting(false); }
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-bold text-yellow-600 mb-6">Assign Walk‑In</h2>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Customer Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Customer Name
-          </label>
-          <input
-            type="text"
-            placeholder="Enter customer name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border px-3 py-2 rounded text-sm w-full max-w-md focus:ring-2 focus:ring-yellow-500"
-            required
-          />
-        </div>
-
-        {/* Service Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Choose Service
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            {services.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                onClick={() => setServiceId(s.id)}
-                className={`p-4 rounded-lg border text-sm transition ${
-                  serviceId === s.id
-                    ? "bg-yellow-100 border-yellow-500"
-                    : "bg-gray-50 hover:bg-gray-100 border-gray-300"
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Barber Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Assign Barber
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            {barbers.map((b) => (
-              <button
-                type="button"
-                key={b.id}
-                onClick={() => setBarberId(b.id)}
-                className={`p-4 rounded-lg border text-sm transition ${
-                  barberId === b.id
-                    ? "bg-yellow-100 border-yellow-500"
-                    : "bg-gray-50 hover:bg-gray-100 border-gray-300"
-                }`}
-              >
-                {b.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="bg-yellow-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-yellow-700 transition"
-          >
-            Assign Walk‑In
-          </button>
-        </div>
+    <section className="reception-module-view">
+      <header className="admin-module-header"><div><p className="admin-eyebrow">WALK-IN DESK</p><h2 className="admin-module-title">Send a customer to their stylist</h2><p className="admin-module-subtitle">No customer form is needed. Choose their regular stylist, select the service, and assign.</p></div><span className="reception-step-badge"><FiUsers /> Fast assignment</span></header>
+      <form className="reception-walkin-layout" onSubmit={handleSubmit}>
+        <section className="admin-module-card"><div className="admin-module-toolbar"><div><p className="admin-card-kicker">STEP 1</p><h3>Who is their stylist?</h3></div><span className="admin-toolbar-note">{selectedBarber?.name || "Required"}</span></div>{loading && <div className="admin-inline-state">Loading stylists…</div>}<div className="reception-choice-grid">{barbers.map((barber) => <button type="button" className={`reception-choice-card ${barberId === String(barber.id) ? "is-selected" : ""}`} key={barber.id} onClick={() => setBarberId(String(barber.id))}><span className="reception-barber-avatar">{barber.name?.slice(0, 1)}</span><span><strong>{barber.name}</strong><small>Assign customer to this chair</small></span>{barberId === String(barber.id) && <FiCheckCircle className="reception-choice-check" />}</button>)}</div></section>
+        <section className="admin-module-card"><div className="admin-module-toolbar"><div><p className="admin-card-kicker">STEP 2</p><h3>What service do they need?</h3></div><span className="admin-toolbar-note">{selectedService ? `${money(selectedService.price || 0)} · ${selectedService.duration || 0} min` : "Required"}</span></div>{loading && <div className="admin-inline-state">Loading services…</div>}<div className="reception-choice-grid">{services.map((service) => <button type="button" className={`reception-choice-card ${serviceId === String(service.id) ? "is-selected" : ""}`} key={service.id} onClick={() => setServiceId(String(service.id))}><span className="reception-choice-icon"><FiScissors /></span><span><strong>{service.name}</strong><small>{money(service.price || 0)} · {service.duration || 0} min</small></span>{serviceId === String(service.id) && <FiCheckCircle className="reception-choice-check" />}</button>)}</div></section>
+        <section className="reception-walkin-summary"><div><p className="admin-card-kicker">READY TO ASSIGN</p><h3>{selectedBarber?.name || "Choose a stylist"}</h3><p>{selectedService ? `${selectedService.name} · customer pays after service` : "Then choose the service"}</p></div><button type="submit" className="admin-primary-button" disabled={submitting || !serviceId || !barberId}>{submitting ? "Assigning…" : <><FiPlus /> Send to stylist</>}</button></section>
       </form>
-
-      {/* ✅ Success Popup */}
-      {successPopup && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white w-96 p-8 rounded-xl shadow-2xl text-center">
-            <div className="text-green-600 text-7xl mb-4">✔️</div>
-            <h3 className="text-2xl font-bold mb-2 text-green-700">Walk‑In Assigned</h3>
-            <p className="text-gray-600 mb-6">
-              The customer has been successfully assigned to a barber.
-            </p>
-            <button
-              onClick={() => setSuccessPopup(false)}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      {error && <div className="admin-inline-error">{error}</div>}
+      {assignedBarberName && <div className="reception-modal-backdrop"><div className="reception-modal"><span className="reception-success-icon"><FiCheckCircle /></span><h3>Customer assigned</h3><p>The walk-in is now on {assignedBarberName}’s board. Collect payment when the customer returns after their service.</p><button className="admin-primary-button" onClick={() => setAssignedBarberName(null)}>Done</button><button className="reception-modal-close" onClick={() => setAssignedBarberName(null)} aria-label="Close"><FiX /></button></div></div>}
+    </section>
   );
 };
 

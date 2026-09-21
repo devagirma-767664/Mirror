@@ -2,7 +2,7 @@ import React from "react";
 
 const qualities = [
   {
-    title: "Expert Barbers",
+    title: "Expert Stylists",
     description: "Our team is highly skilled with years of experience in modern and classic styles.",
     icon: "💈",
   },

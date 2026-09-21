@@ -12,7 +12,7 @@ const BookingCTA: React.FC<BookingCTAProps> = ({ ctaText }) => {
           Ready for a <span className="text-yellow-400">Fresh Look?</span>
         </h3>
         <p className="text-xl md:text-lg mb-10 text-gray-200">
-          Book your appointment today and let our barbers give you the style you deserve.
+          Book your appointment today and let our stylists give you the style you deserve.
         </p>
         <a
           href="/booking"

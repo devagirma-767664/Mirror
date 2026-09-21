@@ -1,36 +1,42 @@
-// src/components/admin/ServicesManagement.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { FiClock, FiDollarSign, FiEdit3, FiHash, FiPackage, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import {
-  fetchServices,
-  addService,
-  updateService,
-  deleteService,
-} from "../../features/services/servicesThunks";
-import { FaTag, FaClock, FaDollarSign } from "react-icons/fa";
+import { addService, deleteService, fetchServices, updateService } from "../../features/services/servicesThunks";
+import { amount } from '../Reception/desk';
+
+type ServiceRecord = {
+  id: string | number;
+  name: string;
+  price: number | string;
+  duration: number | string;
+  description?: string;
+  image_url?: string | null;
+};
 
 const ServicesManagement: React.FC = () => {
   const dispatch = useAppDispatch();
+  const currency = useAppSelector(state => state.auth.user?.shop?.currency) || 'ETB';
+  const money = (value: number | string) => amount(value, currency);
   const { list, loading, error } = useAppSelector((state) => state.services);
-
+  const services = (list || []) as ServiceRecord[];
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(30);
-
+  const [price, setPrice] = useState(0);
+  const [duration, setDuration] = useState(30);
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchServices());
   }, [dispatch]);
 
-  const handleAddOrUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editId) {
-      dispatch(updateService({ id: editId, name, price, duration }));
-    } else {
-      dispatch(addService({ name, price, duration }));
-    }
+  const summary = useMemo(() => ({
+    total: services.length,
+    average: services.length ? services.reduce((sum, service) => sum + Number(service.price || 0), 0) / services.length : 0,
+    shortest: services.length ? Math.min(...services.map((service) => Number(service.duration || 0))) : 0,
+    longest: services.length ? Math.max(...services.map((service) => Number(service.duration || 0))) : 0,
+  }), [services]);
+
+  const resetForm = () => {
     setName("");
     setPrice(0);
     setDuration(30);
@@ -38,129 +44,82 @@ const ServicesManagement: React.FC = () => {
     setShowForm(false);
   };
 
-  const handleEdit = (service: any) => {
-    setEditId(service.id);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      if (editId) {
+        await dispatch(updateService({ id: editId, name, price, duration })).unwrap();
+      } else {
+        await dispatch(addService({ name, price, duration })).unwrap();
+      }
+      resetForm();
+    } catch {
+      // The slice keeps the server error visible above the list.
+    }
+  };
+
+  const handleEdit = (service: ServiceRecord) => {
+    setEditId(String(service.id));
     setName(service.name);
-    setPrice(service.price);
-    setDuration(service.duration);
+    setPrice(Number(service.price || 0));
+    setDuration(Number(service.duration || 30));
     setShowForm(true);
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-yellow-600">Services Management</h2>
-        <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditId(null);
-            setName("");
-            setPrice(0);
-            setDuration(30);
-          }}
-          className="bg-yellow-600 text-white px-4 py-2 rounded-lg shadow hover:bg-yellow-700 transition font-medium"
-        >
-          {showForm ? "Cancel" : "Add Service"}
+    <section className="admin-module-view">
+      <header className="admin-module-header">
+        <div>
+          <p className="admin-eyebrow">YOUR SERVICES</p>
+          <h2 className="admin-module-title">Services and prices</h2>
+          <p className="admin-module-subtitle">Add the services you offer and the price for each one.</p>
+        </div>
+        <button className="admin-primary-button" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}>
+          {showForm ? <FiX /> : <FiPlus />} <span>{showForm ? "Close form" : "Add service"}</span>
         </button>
+      </header>
+
+      <div className="admin-module-stats">
+        <div className="admin-stat-mini"><span className="admin-stat-mini-icon indigo"><FiPackage /></span><div><small>Services</small><strong>{summary.total}</strong></div></div>
+        <div className="admin-stat-mini"><span className="admin-stat-mini-icon purple"><FiDollarSign /></span><div><small>Average price</small><strong>{money(summary.average)}</strong></div></div>
+        <div className="admin-stat-mini"><span className="admin-stat-mini-icon orange"><FiClock /></span><div><small>Quickest service</small><strong>{summary.shortest || 0}<em> min</em></strong></div></div>
+        <div className="admin-stat-mini"><span className="admin-stat-mini-icon green"><FiHash /></span><div><small>Longest service</small><strong>{summary.longest || 0}<em> min</em></strong></div></div>
       </div>
 
-      {/* Add/Edit Service Form */}
       {showForm && (
-        <form
-          onSubmit={handleAddOrUpdate}
-          className="mb-8 bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-md space-y-4 animate-fadeIn"
-        >
-          <div className="grid md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2 flex items-center gap-2">
-                <FaTag className="text-yellow-600" /> Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-600 focus:outline-none"
-                placeholder="Service name"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2 flex items-center gap-2">
-                <FaDollarSign className="text-yellow-600" /> Price
-              </label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-600 focus:outline-none"
-                placeholder="Price in USD"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2 flex items-center gap-2">
-                <FaClock className="text-yellow-600" /> Duration (mins)
-              </label>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-600 focus:outline-none"
-                placeholder="Duration in minutes"
-                required
-              />
-            </div>
+        <form className="admin-form-panel" onSubmit={handleSubmit}>
+          <div className="admin-form-heading"><div><p className="admin-card-kicker">{editId ? "EDIT SERVICE" : "NEW SERVICE"}</p><h3>{editId ? "Change a service" : "Add a service"}</h3></div><span className="admin-form-note">You can change prices any time.</span></div>
+          <div className="admin-form-grid admin-form-grid-three">
+            <label className="admin-field"><span>Service name</span><input className="admin-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Classic haircut" required /></label>
+            <label className="admin-field"><span>Price ({currency})</span><input className="admin-input" type="number" min="0" step="0.01" value={price} onChange={(event) => setPrice(Number(event.target.value))} required /></label>
+            <label className="admin-field"><span>Duration</span><div className="admin-input-with-icon"><FiClock /><input className="admin-input" type="number" min="5" step="5" value={duration} onChange={(event) => setDuration(Number(event.target.value))} required /></div></label>
           </div>
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="bg-yellow-600 text-white px-6 py-2 rounded-lg shadow hover:bg-yellow-700 transition font-semibold"
-            >
-              {editId ? "Update Service" : "Save Service"}
-            </button>
-          </div>
+          {error && <div className="admin-inline-error" role="alert">{String(error)}</div>}
+          <div className="admin-form-actions"><button type="button" className="admin-secondary-button" disabled={loading} onClick={resetForm}>Cancel</button><button type="submit" disabled={loading} className="admin-primary-button">{editId ? <FiEdit3 /> : <FiPlus />} {loading ? 'Saving…' : editId ? "Save changes" : "Add service"}</button></div>
         </form>
       )}
 
-      {/* Services Table */}
-      {loading && <p>Loading services...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100 text-left">
-            <th className="p-2">Name</th>
-            <th className="p-2">Price</th>
-            <th className="p-2">Duration</th>
-            <th className="p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((service) => (
-            <tr key={service.id} className="border-b hover:bg-gray-50 transition">
-              <td className="p-2">{service.name}</td>
-              <td className="p-2">${service.price}</td>
-              <td className="p-2">{service.duration} mins</td>
-              <td className="p-2 flex gap-2">
-                <button
-                  onClick={() => handleEdit(service)}
-                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => dispatch(deleteService(service.id))}
-                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
+      <section className="admin-module-card">
+        <div className="admin-module-toolbar"><div><p className="admin-card-kicker">CURRENT SERVICES</p><h3>Services customers can choose</h3></div><span className="admin-toolbar-note">{services.length} services</span></div>
+        {loading && <div className="admin-inline-state">Loading services…</div>}
+        {error && <div className="admin-inline-error">{typeof error === "string" ? error : "Unable to load services."}</div>}
+        {!loading && !services.length && <div className="admin-empty-state">Add your first service here.</div>}
+        <div className="admin-service-list">
+          {services.map((service) => (
+            <div className="admin-service-row" key={service.id}>
+              <div className="admin-service-icon"><FiScissorsMark /></div>
+              <div className="admin-service-main"><strong>{service.name}</strong><span>{service.description || "Available for customers to choose."}</span></div>
+              <div className="admin-service-detail"><small>Price</small><strong>{money(service.price)}</strong></div>
+              <div className="admin-service-detail"><small>Duration</small><strong>{service.duration} min</strong></div>
+              <div className="admin-row-actions"><button className="admin-quiet-icon" title={`Edit ${service.name}`} onClick={() => handleEdit(service)}><FiEdit3 /></button><button className="admin-danger-icon" title={`Remove ${service.name}`} onClick={() => dispatch(deleteService(String(service.id)))}><FiTrash2 /></button></div>
+            </div>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </div>
+      </section>
+    </section>
   );
 };
+
+const FiScissorsMark = () => <span className="admin-service-glyph">✂</span>;
 
 export default ServicesManagement;

@@ -100,7 +100,7 @@ const barbersSlice = createSlice({
 
     // Close Session
     builder.addCase(closeSession.fulfilled, (state, action) => {
-      const closedAppointment = action.payload;
+      const closedAppointment = action.payload.appointment || action.payload;
       state.appointments = state.appointments.filter(
         (a) => a.id !== closedAppointment.id
       );
@@ -108,11 +108,12 @@ const barbersSlice = createSlice({
 
     // Request Day Off
     builder.addCase(requestDayOff.fulfilled, (state, action) => {
-      const { barberId } = action.payload;
-      const barber = state.list.find((b) => b.id === barberId);
+      const request = action.payload;
+      const requestBarberId = request.barber_id || request.barberId;
+      const barber = state.list.find((b) => String(b.id) === String(requestBarberId));
       if (barber) {
         barber.dayOffRequests = barber.dayOffRequests || [];
-        barber.dayOffRequests.push(action.payload);
+        barber.dayOffRequests.push(request);
       }
     });
 

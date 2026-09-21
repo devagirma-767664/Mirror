@@ -1,120 +1,88 @@
 const AppointmentModel = require('../models/appointmentModel');
 const BillModel = require('../models/billModel');
+const OperationsModel = require('../models/operationsModel');
+const Desk = require('../models/receptionDeskModel');
+const Finance = require('../models/deskFinanceModel');
 
 const ReceptionistController = {
-  // Book Appointment
   async bookAppointment(req, res) {
     try {
-
       const { customerName, customerPhone, barberId, serviceId, startTime } = req.body;
-
-      // ✅ Validate required IDs
-      if (!barberId || !serviceId) {
-        throw new Error("Service and barber must be selected for appointment.");
-      }
-
-      const appointment = await AppointmentModel.createAppointment(
-        customerName,
-        customerPhone,
-        barberId,
-        serviceId,
-        startTime
-      );
+      const appointment = await AppointmentModel.createAppointment(customerName, customerPhone, barberId, serviceId, startTime, req.user.shopId);
       res.status(201).json(appointment);
-    } catch (err) {
-      console.error("❌ Error booking appointment:", err);
-      res.status(500).json({ error: err.message });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   },
 
-  // Fetch only active appointments
   async getAllAppointments(req, res) {
     try {
-      const appointments = await AppointmentModel.getActiveAppointments();
-      res.json(appointments);
-    } catch (err) {
-      console.error("❌ Error fetching appointments:", err);
-      res.status(500).json({ error: err.message });
+      res.json(await AppointmentModel.getAllActiveAppointments(req.user.shopId));
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   },
 
-  // ✅ Check-In Booked Customer → also generate bill
   async checkIn(req, res) {
     try {
-
-      // Mark appointment as Arrived
-      const appointment = await AppointmentModel.checkInAppointment(req.params.id);
-    
-      // ✅ Ensure appointment has service & barber IDs
-      if (!appointment.service_id || !appointment.barber_id) {
-        throw new Error("Appointment missing service or barber — cannot generate bill");
-      }
-
-      // Generate bill immediately
-      const bill = await BillModel.generateBill(req.params.id);
-
-      res.json({ message: "Customer checked in and bill generated", appointment, bill });
-    } catch (err) {
-      console.error("❌ Error in check-in:", err);
-      res.status(500).json({ error: err.message });
+      const appointment = await AppointmentModel.checkInAppointment(req.params.id, req.user.shopId);
+      res.json({ message: 'Customer checked in and assigned to the barber.', appointment });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   },
 
-  // Register Walk-In
-  // Register Walk-In → also generate bill
-async registerWalkIn(req, res) {
-  try {
-    const { customerName, barberId, serviceId } = req.body;
-
-    if (!barberId || !serviceId) {
-      throw new Error("Service and barber must be selected for walk-in.");
+  async registerWalkIn(req, res) {
+    try {
+      const { customerName, barberId, serviceId } = req.body;
+      const appointment = await Desk.create(req.user.shopId, req.user.id, {barberId, nickname:customerName, serviceIds:req.body.serviceIds || (serviceId ? [serviceId] : [])});
+      res.status(201).json({ message: 'Walk-in added to the barber’s queue.', appointment });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
+  },
 
-    // Create appointment
-    const appointment = await AppointmentModel.assignWalkIn(
-      customerName,
-      serviceId,
-      barberId
-    );
-
-    // ✅ Ensure appointment has service & barber IDs
-    if (!appointment.service_id || !appointment.barber_id) {
-      throw new Error("Appointment missing service or barber — cannot generate bill");
-    }
-
-    // Generate bill immediately
-    const bill = await BillModel.generateBill(appointment.id);
-
-    res.status(201).json({ message: "Walk-in registered and bill generated", appointment, bill });
-  } catch (err) {
-    console.error("❌ Error registering walk-in:", err);
-    res.status(500).json({ error: err.message });
-  }
-}
-,
-
-  // ✅ Fetch all bills (Receptionist/Admin view)
   async getBills(req, res) {
     try {
-      const bills = await BillModel.getBillsReport();
-      res.json(bills);
-    } catch (err) {
-      console.error("❌ Error fetching bills:", err);
-      res.status(500).json({ error: err.message });
+      res.json(await BillModel.getBillsReport(req.user.shopId));
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   },
 
-  // Mark Bill Paid → deletes appointment
   async markBillPaid(req, res) {
     try {
-      const bill = await BillModel.markPaid(req.params.id);
-      
+      const bill = await BillModel.markPaid(req.params.id, req.user.shopId, req.user.id, req.body);
       res.json(bill);
-    } catch (err) {
-      console.error("❌ Error marking bill paid:", err);
-      res.status(500).json({ error: err.message });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-  }
+  },
+
+  async getInventory(req, res) {
+    try { res.json(await OperationsModel.getInventory(req.user.shopId)); }
+    catch (error) { res.status(500).json({ error: error.message }); }
+  },
+  async createInventory(req, res) {
+    try { res.status(201).json(await OperationsModel.createInventoryItem(req.user.shopId, req.body)); }
+    catch (error) { res.status(400).json({ error: error.message }); }
+  },
+  async updateInventory(req, res) {
+    try { res.json(await OperationsModel.updateInventoryItem(req.user.shopId, req.params.id, req.body)); }
+    catch (error) { res.status(400).json({ error: error.message }); }
+  },
+  async adjustInventory(req, res) {
+    try { res.json(await OperationsModel.adjustInventory(req.user.shopId, req.params.id, req.body.quantityChange, req.body.reason, req.user.id)); }
+    catch (error) { res.status(400).json({ error: error.message }); }
+  },
+  async getExpenses(req, res) {
+    try { res.json(await OperationsModel.getExpenses(req.user.shopId)); }
+    catch (error) { res.status(500).json({ error: error.message }); }
+  },
+  async createExpense(req, res) {
+    try { res.status(201).json(await Finance.expense(req.user.shopId, req.user.id, req.body)); }
+    catch (error) { res.status(400).json({ error: error.message }); }
+  },
 };
 
 module.exports = ReceptionistController;
