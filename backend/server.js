@@ -96,7 +96,7 @@ if (production && fs.existsSync(clientIndex)) {
 }
 app.use((req, res) => {
   const isApiRoute = browserRoutes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`));
-  if (production && !isApiRoute && req.method === 'GET' && fs.existsSync(clientIndex)) return res.sendFile(clientIndex);
+  if (production && !isApiRoute && ['GET', 'HEAD'].includes(req.method) && fs.existsSync(clientIndex)) return res.sendFile(clientIndex);
   res.status(404).json({ error: 'Route not found.' });
 });
 app.use((error, req, res, _next) => {
