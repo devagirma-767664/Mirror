@@ -20,4 +20,4 @@ COPY --from=build --chown=node:node /app/frontend/dist ./frontend/dist
 USER node
 EXPOSE 5010
 # A direct listener keeps the HTTP process stable on the current VPS runtime.
-CMD ["node", "-e", "require('./backend/server').listen(process.env.PORT || 5010, process.env.HOST || '0.0.0.0')"]
+CMD ["node", "-e", "require('./backend/server').listen(process.env.PORT || 5010, '0.0.0.0')"]

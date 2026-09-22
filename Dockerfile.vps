@@ -15,4 +15,4 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=5010
 USER node
 EXPOSE 5010
 
-CMD ["node", "-e", "require('./backend/server').listen(process.env.PORT || 5010, process.env.HOST || '0.0.0.0')"]
+CMD ["node", "-e", "require('./backend/server').listen(process.env.PORT || 5010, '0.0.0.0')"]
