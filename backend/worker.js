@@ -4,11 +4,13 @@ const pool = require('./db');
 const Finance = require('./models/deskFinanceModel');
 const Telegram = require('./models/telegramModel');
 const PlatformEvents = require('./models/platformEventModel');
+const SubscriptionAlerts = require('./models/subscriptionAlertModel');
 
 const tasks = [
   Finance.startDailyClock(),
   Telegram.start(),
   PlatformEvents.start(),
+  SubscriptionAlerts.start(),
 ];
 
 // The individual schedulers use unref'd timers so they do not prevent a web

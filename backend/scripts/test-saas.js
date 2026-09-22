@@ -62,6 +62,9 @@ module.exports=async({pool,url,request,check,reject,createUser,shop,admin,recept
   check((await request('/admin/owner/report',owner,'admin',tenant)).status===402,'An already-signed-in owner loses operational access when the trial expires');
   check((await request('/receptionist/desk',desk.id,'receptionist',tenant)).status===402,'Expired trial blocks reception operations');
   check((await request('/barber/appointments',barber.id,'barber',tenant)).status===402,'Expired trial blocks barber operations');
+  check((await request('/auth/me',desk.id,'receptionist',tenant)).status===200,'Expired staff can still refresh their account and receive the subscription status');
+  const expiredStaffLogin=await publicRequest('/auth/login',{identifier:'0912345680',password:'ChangedDesk123!'});
+  check(expiredStaffLogin.status===200&&(await expiredStaffLogin.json()).user.subscription.status==='trial_expired','Expired staff can sign in and receive a clear subscription-required state');
   check((await request('/services',owner,'admin',tenant)).status===402,'Optional-auth service endpoint also checks trial expiry');
   check((await publicRequest('/public/shop?shop=trialstudio')).status===404,'Expired trial takes the tenant public page offline');
   const expiredLogin=await publicRequest('/auth/login',{email:signup.email,password:signup.password});

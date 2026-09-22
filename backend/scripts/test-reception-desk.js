@@ -13,6 +13,7 @@ const Operations=require('../models/operationsModel');
 const Compensation=require('../models/compensationModel');
 const OwnerReports=require('../models/ownerReportModel');
 const Telegram=require('../models/telegramModel');
+const SubscriptionAlerts=require('../models/subscriptionAlertModel');
 const Payroll=require('../models/payrollModel');
 const Notifications=require('../models/shopNotificationModel');
 const control=new Pool({...pool.options,max:1});
@@ -60,6 +61,7 @@ async function main(){
   await pool.query(fs.readFileSync(path.join(__dirname,'../migrations/021_daily_customer_packages.sql'),'utf8'));
   await pool.query(fs.readFileSync(path.join(__dirname,'../migrations/022_set_max_package_price.sql'),'utf8'));
   await pool.query(fs.readFileSync(path.join(__dirname,'../migrations/023_max_only_website_booking.sql'),'utf8'));
+  await pool.query(fs.readFileSync(path.join(__dirname,'../migrations/024_subscription_expiry_alerts.sql'),'utf8'));
   const maxPlan=(await pool.query("SELECT features,limits FROM subscription_plans WHERE code='mirror_max'")).rows[0];
   const plusPlan=(await pool.query("SELECT features FROM subscription_plans WHERE code='barberbook_plus'")).rows[0];
   check(maxPlan?.features?.telegramDigest===true&&maxPlan?.features?.publicWebsite===true&&maxPlan?.features?.onlineBooking===true&&Number(maxPlan?.limits?.dailyCustomers)===0&&Number(maxPlan?.limits?.staff)===30,'Mirror Max includes website, booking, Telegram, 30 staff accounts, and no daily customer limit');
@@ -79,6 +81,7 @@ async function main(){
   check(finalized.run?.status==='finalized'&&finalized.items.find(item=>item.id===payrollItem.id)?.gross===3300,'Payroll keeps salary adjustments when finalized');
   await Notifications.send(admin,{shopId:shop,title:'Test platform note',body:'A note for the shop owner.',path:'/admin'});
   check((await Notifications.forShop(shop)).unread===1,'Platform messages appear in the shop owner notification feed');
+  await reject(Notifications.create(pool,shop,{title:'Unsafe link',body:'This must not be saved.',path:'//outside.example'}),/Notification links must stay inside Mirror/);
   const service=(await pool.query("INSERT INTO services(name,price,duration,shop_id) VALUES('Haircut',100,30,$1) RETURNING id",[shop])).rows[0].id;
   const beard=(await pool.query("INSERT INTO services(name,price,duration,shop_id) VALUES('Beard',50,15,$1) RETURNING id",[shop])).rows[0].id;
   const cash=await Finance.createAccount(shop,admin,{method:'cash'});
@@ -172,9 +175,16 @@ async function main(){
   process.env.TELEGRAM_ENCRYPTION_KEY='test-only-owner-notifications-key';
   const botToken='123456:TEST_ONLY_TOKEN_FOR_ISOLATED_REPORT_TEST';
   await reject(Telegram.save(shop,{enabled:true,botToken,chatId:'12345'}),/Plus/);
-  await pool.query("UPDATE shops SET subscription_status='trial',trial_ends_at=NOW()+INTERVAL '7 days' WHERE id=$1",[shop]);
+  await pool.query("UPDATE shops SET subscription_status='trial',trial_ends_at=NOW()+INTERVAL '23 hours' WHERE id=$1",[shop]);
   await Telegram.save(shop,{enabled:true,botToken,chatId:'12345'});
   check((await Telegram.settings(shop)).available,'Daily Telegram digest is available while a shop is in its free trial, even on the Basic package');
+  await SubscriptionAlerts.detectUpcoming();await SubscriptionAlerts.detectUpcoming();
+  const expiryAlerts=(await pool.query('SELECT * FROM subscription_expiry_alerts WHERE shop_id=$1',[shop])).rows;
+  const expiryNotice=(await pool.query("SELECT title,path FROM shop_notifications WHERE shop_id=$1 AND title='Your free trial ends tomorrow'",[shop])).rows[0];
+  check(expiryAlerts.length===1&&expiryAlerts[0].status==='queued'&&expiryNotice?.path==='/admin?view=package','A trial ending within one day creates one durable owner reminder and package link');
+  const expiryMessages=[];
+  await SubscriptionAlerts.deliverOne(async(target,options)=>{expiryMessages.push({method:target.split('/').pop(),body:JSON.parse(options.body)});return new Response(JSON.stringify({ok:true,result:{message_id:78}}));});
+  check(expiryMessages.length===1&&expiryMessages[0].method==='sendMessage'&&expiryMessages[0].body.text.includes('Your free trial ends tomorrow')&&expiryMessages[0].body.text.includes('/admin?view=package')&&(await pool.query("SELECT status FROM subscription_expiry_alerts WHERE id=$1",[expiryAlerts[0].id])).rows[0].status==='sent','A verified owner bot receives the one-day expiry reminder exactly once');
   await Operations.createInventoryItem(shop,{name:'Blades',quantity:2,reorderLevel:5,unit:'boxes'});
   await reject(Finance.closeDay(shop,reception,{date:day,cashCounts:{[cash.id]:430},digitalVerified:true}),/handover note/);
   await reject(Finance.closeDay(shop,reception,{date:day,cashCounts:{[cash.id]:530},notes:'Legacy entries'}),/digital collections/);
@@ -335,6 +345,10 @@ async function main(){
   check(race.filter(r=>r.status==='fulfilled').length===1&&((state==='Cancelled'&&!raceBills.length)||(state==='Completed'&&raceBills.length===1&&raceBills[0].paid)),'Simultaneous cancellation and payment cannot produce a cancelled paid visit');
   await require('./test-saas')({pool,url,request,check,reject,createUser,shop,admin,reception});
   await require('./test-platform')({pool,url,request,check,reject,shop,admin,reception});
+  await pool.query("UPDATE shops SET subscription_status='active',current_period_end=((NOW() AT TIME ZONE timezone)::date+1) WHERE id=$1",[shop]);
+  await SubscriptionAlerts.detectUpcoming();
+  const paidExpiry=(await pool.query("SELECT status FROM subscription_expiry_alerts WHERE shop_id=$1 AND title='Your package ends tomorrow'",[shop])).rows[0];
+  check(paidExpiry?.status==='skipped','A paid package ending tomorrow creates the same owner renewal reminder when no Telegram bot is connected');
   const today=(await Finance.shopDay(shop)).today;
   const activeToday=Number((await pool.query(`SELECT COUNT(*) AS n FROM appointments
     WHERE shop_id=$1 AND start_time::date=$2::date AND status NOT IN ('Cancelled','NoShow')`,[shop,today])).rows[0].n);

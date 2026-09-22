@@ -517,6 +517,8 @@
 .reception-sidebar-nav button { display:flex; align-items:center; gap:12px; width:100%; border:0; border-radius:12px; padding:12px 14px; color:#798198; background:transparent; cursor:pointer; text-align:left; font-size:14px; }
 .reception-sidebar-nav button:hover,.reception-sidebar-nav button.is-active { color:#4f46e5; background:#eef0ff; }
 .reception-sidebar-nav button.is-active { font-weight:700; }
+.reception-sidebar-nav button.is-locked { color:#8a819a; background:#f7f5fa; }
+.reception-sidebar-nav button.is-locked:hover { color:#675883; background:#f1edf8; }
 .reception-sidebar-nav button>span:first-child { display:grid; place-items:center; font-size:17px; }
 .reception-sidebar-nav button b { margin-left:auto; min-width:18px; border-radius:7px; padding:2px 5px; color:#b34a55; background:#fff1f2; font-size:12px; text-align:center; }
 .reception-sidebar-footer { margin-top:auto; padding:16px 8px 0; border-top:1px solid #edf0f5; }

@@ -9,16 +9,17 @@ import PackageManagement from './Admin/PackageManagement';
 export default function WorkspaceAccess({children}:{children:ReactNode}) {
   const dispatch=useAppDispatch(),location=useLocation();
   const {user,token}=useAppSelector(s=>s.auth);
-  const [loading,setLoading]=useState(true),[error,setError]=useState('');
+  const [loading,setLoading]=useState(true),[error,setError]=useState(''),[subscriptionBlocked,setSubscriptionBlocked]=useState(false);
   const lastActivity=useRef(Date.now());
   useEffect(()=>{
     let active=true;
-    const check=async()=>{try{const r=await api.get('/auth/me');if(active){dispatch(refreshUser(r.data.user));setError('');}}catch(e){if(active)setError(typeof e==='string'?e:'Could not open your page.');}finally{if(active)setLoading(false);}};
+    const check=async()=>{try{const r=await api.get('/auth/me');if(active){dispatch(refreshUser(r.data.user));setError('');setSubscriptionBlocked(false);}}catch(e){if(active){const message=typeof e==='string'?e:'Could not open your page.';if(/active package|renew.*package|subscription/i.test(message)){setSubscriptionBlocked(true);setError('');}else setError(message);}}finally{if(active)setLoading(false);}};
     const expired=()=>{void dispatch(logoutUser());};
     const focus=()=>{if(document.visibilityState==='visible')void check();};
+    const subscriptionRequired=()=>{if(active){setSubscriptionBlocked(true);setError('');setLoading(false);}};
     void check();const timer=window.setInterval(focus,30000);
-    window.addEventListener('focus',focus);window.addEventListener('subscription-required',check);window.addEventListener('session-expired',expired);
-    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('subscription-required',check);window.removeEventListener('session-expired',expired);};
+    window.addEventListener('focus',focus);window.addEventListener('subscription-required',subscriptionRequired);window.addEventListener('session-expired',expired);
+    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('subscription-required',subscriptionRequired);window.removeEventListener('session-expired',expired);};
   },[dispatch,token,user?.id]);
   useEffect(()=>{
     if(!user||!token)return;
@@ -47,7 +48,9 @@ export default function WorkspaceAccess({children}:{children:ReactNode}) {
   if(!user)return <Navigate to="/login" replace/>;
   if(user.role==='platform_admin')return <>{children}</>;
   const access=user.subscription;
-  if(!access?.canOperate)return <main className="saas-restricted"><header><Link to="/"><img src="/mirror.svg" alt=""/> Mirror</Link><button className="admin-secondary-button" onClick={()=>dispatch(logoutUser())}><FiLogOut/> Sign out</button></header><div className="saas-access-intro"><p className="admin-eyebrow">{user.shop?.name}</p><h1>{access?.status==='trial_expired'?'Your 7-day trial has ended.':access?.status==='suspended'?'Your shop page is paused.':'Choose a package to continue.'}</h1><p>{user.role==='admin'?'Your shop records are safe. Choose a package and send your payment screenshot for checking.':'Ask the shop owner to renew the package. Your page opens again after approval.'}</p></div>{user.role==='admin'&&<PackageManagement/>}</main>;
+  const subscriptionEnded=subscriptionBlocked||!access?.canOperate;
+  const ownerTitle=access?.status==='trial_expired'?'Your 7-day trial has ended.':access?.status==='past_due'?'Your package has ended.':access?.status==='cancelled'?'Your package was cancelled.':access?.status==='suspended'?'Your shop page is paused.':'Choose a package to continue.';
+  if(subscriptionEnded)return <main className="saas-restricted"><header><Link to="/"><img src="/mirror.svg" alt=""/> Mirror</Link><button className="admin-secondary-button" onClick={()=>dispatch(logoutUser())}><FiLogOut/> Sign out</button></header><div className="saas-access-intro"><p className="admin-eyebrow">{user.shop?.name}</p><h1>{user.role==='admin'?ownerTitle:'Subscription renewal required'}</h1><p>{user.role==='admin'?'Your shop records are safe. Choose a package and send your payment screenshot for checking.':'Your shop subscription has ended. Ask the owner to renew it. Your page will open again after payment approval.'}</p></div>{user.role==='admin'&&<PackageManagement/>}</main>;
   if(user.role==='admin'&&!access.onboardingComplete&&location.pathname!=='/admin/setup'&&new URLSearchParams(location.search).get('view')!=='package')return <Navigate to="/admin/setup" replace/>;
   return <>{access.status==='trial'&&<div className="saas-trial-banner" role="status"><FiClock/><span>{access.daysRemaining} {access.daysRemaining===1?'day':'days'} left in your free trial</span>{user.role==='admin'&&<Link to="/admin?view=package">Choose a package</Link>}</div>}{children}</>;
 }

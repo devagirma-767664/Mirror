@@ -23,7 +23,8 @@ const LoginPage: React.FC = () => {
       platform_admin: "/platform",
       customer: "/booking",
     };
-    const destination = destinations[String(user.role || "").toLowerCase()];
+    const role=String(user.role || "").toLowerCase();
+    const destination = role==='admin'&&!user.subscription?.canOperate?'/admin?view=package':destinations[role];
     if (destination) {
       const from=location.state?.from;
       navigate(typeof from==='string'&&(from===destination||from.startsWith(destination+'?'))?from:destination, { replace: true });
@@ -48,7 +49,7 @@ const LoginPage: React.FC = () => {
 
           <form className="workspace-login-form" onSubmit={handleSubmit}>
             {(error || accessError) && <div className="workspace-login-error" role="alert">{accessError || error}</div>}
-            <label className="workspace-login-field"><span>Phone number or owner email</span><div><FiSmartphone /><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="0912345678" autoComplete="username" inputMode="tel" required /></div><small>Staff use their phone number. Shop and platform owners use email.</small></label>
+            <label className="workspace-login-field"><span>Phone number or email</span><div><FiSmartphone /><input type="text" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="0912345678 or you@example.com" autoComplete="username" required /></div><small>Staff use their phone number. Shop and platform owners can use their email.</small></label>
             <label className="workspace-login-field"><span>Password</span><div><FiLock /><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password" required /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <FiEyeOff /> : <FiEye />}</button></div></label>
             <button className="workspace-login-submit" type="submit" disabled={loading}><span>{loading ? "Signing in…" : "Sign in"}</span>{!loading && <FiArrowRight />}</button>
           </form>

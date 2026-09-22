@@ -5,7 +5,7 @@ const text=(value,max,label)=>Finance.text(value,max,label);
 const optional=(value,max,label)=>Finance.text(value,max,label,false);
 const path=value=>{
   const result=optional(value,240,'Notification link')||'/admin';
-  if(!result.startsWith('/'))throw new Error('Notification links must stay inside Mirror.');
+  if(!result.startsWith('/')||/^\/[\\/]/.test(result))throw new Error('Notification links must stay inside Mirror.');
   return result;
 };
 const audience=value=>{

@@ -1,13 +1,17 @@
 import {useEffect,useState} from 'react';
 import {FiBell,FiChevronRight,FiCheckCircle} from 'react-icons/fi';
+import {useNavigate} from 'react-router-dom';
 import api from '../api/axios';
 import DeskModal from './Reception/DeskModal';
 import {dateTime,errorText,useDeskResource} from './Reception/desk';
+import {useAppSelector} from '../app/hooks';
+import {notificationDestination} from '../utils/notificationPath';
 
 type Notification={id:number;kind:string;title:string;body:string;path:string;createdAt:string;readAt:string|null};
 type Feed={unread:number;notifications:Notification[]};
 
 export default function NotificationsBell({className='',feedPath='/auth/notifications',readPath=feedPath,emptyMessage='New updates will show here.'}:{className?:string;feedPath?:string;readPath?:string;emptyMessage?:string}){
+  const navigate=useNavigate(),role=useAppSelector(state=>state.auth.user?.role);
   const resource=useDeskResource<Feed>(feedPath,15000);
   const [open,setOpen]=useState(false),[error,setError]=useState(''),[opening,setOpening]=useState<number|null>(null);
   const unread=resource.data?.unread||0;
@@ -23,7 +27,7 @@ export default function NotificationsBell({className='',feedPath='/auth/notifica
         await api.put(`${readPath}/${notification.id}/read`);
         window.dispatchEvent(new Event('mirror-notifications-updated'));
       }
-      if(notification.path){setOpen(false);window.location.assign(notification.path);}
+      if(notification.path){setOpen(false);navigate(notificationDestination(notification.path,role));}
       else await resource.refresh();
     } catch(e){setError(errorText(e));}
     finally{setOpening(null);}
