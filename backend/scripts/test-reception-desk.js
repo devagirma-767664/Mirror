@@ -21,6 +21,8 @@ const testDatabase=`barberbook_desk_test_${Date.now()}`;
 let server,frontend,created=false,checks=0;
 const receiptDirectory=path.join(__dirname,'../private/payment-receipts');
 const receiptFilesBefore=new Set(fs.existsSync(receiptDirectory)?fs.readdirSync(receiptDirectory):[]);
+const uploadDirectory=path.join(__dirname,'../uploads');
+const uploadFilesBefore=new Set(fs.existsSync(uploadDirectory)?fs.readdirSync(uploadDirectory):[]);
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};
 const reject=async(promise,pattern)=>{await assert.rejects(promise,pattern);checks++;};
 const runConcurrentIndexMigration=async()=>{
@@ -270,6 +272,13 @@ async function main(){
   check((await request('/receptionist/daily',reception,'receptionist',shop)).status===200,'Reception can read closing report');
   check((await request('/receptionist/desk',reception,'receptionist',shop)).status===200,'Reception can read the barber board');
   check((await request('/admin/finance',admin,'admin',shop)).status===200,'Owner can manage settings');
+  const staffPhoto=new FormData();
+  staffPhoto.append('name','Photo Support');staffPhoto.append('role','support');staffPhoto.append('staffType','cleaner');staffPhoto.append('monthlySalary','0');
+  staffPhoto.append('profilePicture',new Blob([Buffer.from('staff-photo')],{type:'image/png'}),'staff-photo.png');
+  const photoUserResponse=await fetch(url+'/admin/users',{method:'POST',headers:{Authorization:`Bearer ${token(admin,'admin',shop)}`},body:staffPhoto});
+  const photoUser=await photoUserResponse.json();
+  const storedPhoto=photoUser.profile_picture?await fetch(url+photoUser.profile_picture):null;
+  check(photoUserResponse.status===200&&photoUser.profile_picture&&storedPhoto?.status===200&&await storedPhoto.text()==='staff-photo','Team photos are saved and served from the public upload path');
   const ownerExpense=await request('/admin/expenses',admin,'admin',shop,'POST',{category:'Supplies',description:'Owner purchased towels',amount:10,expenseDate:day,accountId:cash.id});
   const sharedExpenses=await request('/admin/expenses',admin,'admin',shop);
   check(ownerExpense.status===200&&(await sharedExpenses.json()).some(expense=>expense.description==='Owner purchased towels'),'Owner expenses use the same shared ledger as reception and payroll');
@@ -384,6 +393,7 @@ main().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=
   if(server)await new Promise(resolve=>server.close(resolve));
   await pool.end();
   if(fs.existsSync(receiptDirectory))for(const file of fs.readdirSync(receiptDirectory))if(!receiptFilesBefore.has(file))fs.rmSync(path.join(receiptDirectory,file),{force:true});
+  if(fs.existsSync(uploadDirectory))for(const file of fs.readdirSync(uploadDirectory))if(!uploadFilesBefore.has(file))fs.rmSync(path.join(uploadDirectory,file),{force:true});
   if(created&&/^barberbook_desk_test_\d+$/.test(testDatabase))await control.query(`DROP DATABASE ${testDatabase}`);
   await control.end();
 });

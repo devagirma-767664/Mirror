@@ -19,6 +19,19 @@ type AdminUser = {
   active?: boolean;
 };
 
+const staffImageUrl=(value:string|null|undefined)=>{
+  const path=String(value||'').trim();
+  if(!path)return '';
+  if(/^https?:\/\//i.test(path))return path;
+  return `${API_URL}${path.startsWith('/')?path:`/${path}`}`;
+};
+
+const StaffAvatar=({member}:{member:AdminUser})=>{
+  const [failed,setFailed]=useState(false);
+  const image=staffImageUrl(member.profile_picture);
+  return <div className="admin-avatar admin-avatar-medium">{image&&!failed?<img src={image} alt={`${member.name}'s photo`} onError={()=>setFailed(true)}/>:member.name?.slice(0,1)}</div>;
+};
+
 const roleLabels: Record<string, string> = {
   admin: "Admin",
   barber: "Stylist",
@@ -155,7 +168,7 @@ const UserManagement: React.FC = () => {
       )}
 
       <section className="admin-module-card">
-        <div className="admin-module-toolbar"><div><p className="admin-card-kicker">ALL STAFF</p><h3>Your team</h3></div><label className="admin-search-box"><FiSearch /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find staff" /></label></div>
+        <div className="admin-module-toolbar"><div><p className="admin-card-kicker">ALL STAFF</p><h3>Your team</h3></div><label className="admin-search-box"><FiSearch /><input type="search" name="staff-search" autoComplete="off" spellCheck={false} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search staff by name" aria-label="Search staff by name" /></label></div>
         {loading && <div className="admin-inline-state">Loading team members…</div>}
         {error && <div className="admin-inline-error">{typeof error === "string" ? error : "Unable to load team members."}</div>}
         {salaryError&&<div className="admin-inline-error">{salaryError}</div>}
@@ -163,7 +176,7 @@ const UserManagement: React.FC = () => {
         <div className="admin-record-list">
           {filteredUsers.map((member) => (
             <div className="admin-record-row" key={member.id}>
-              <div className="admin-record-main"><div className="admin-avatar admin-avatar-medium">{member.profile_picture ? <img src={`${API_URL}${member.profile_picture}`} alt="" /> : member.name?.slice(0, 1)}</div><div><strong>{member.name}</strong><span>{member.has_workspace===false?`${member.staff_type || 'Support'} · no sign-in page`:member.phone || member.email || 'No sign-in detail'}</span></div></div>
+              <div className="admin-record-main"><StaffAvatar member={member}/><div><strong>{member.name}</strong><span>{member.has_workspace===false?`${member.staff_type || 'Support'} · no sign-in page`:member.phone || member.email || 'No sign-in detail'}</span></div></div>
               <span className={`admin-role-pill ${member.role}`}>{roleLabels[member.role] || member.role}</span>
               <span className="admin-row-status"><i className={member.active===false?'is-inactive':''}/> {member.active===false?'Turned off':member.has_workspace===false?'No sign-in page':'Active'}</span>
               {(member.role==='barber'||member.role==='receptionist')&&<details className="admin-team-login"><summary>Change sign-in</summary><div><input className="admin-input" aria-label={`Phone number for ${member.name}`} type="tel" inputMode="tel" value={credentialDrafts[String(member.id)]?.phone||''} placeholder="0912345678" onChange={event=>setCredentialDrafts(current=>({...current,[String(member.id)]:{...(current[String(member.id)]||{password:''}),phone:event.target.value}}))}/><input className="admin-input" aria-label={`New password for ${member.name}`} type="password" minLength={8} value={credentialDrafts[String(member.id)]?.password||''} placeholder="New password (optional)" onChange={event=>setCredentialDrafts(current=>({...current,[String(member.id)]:{...(current[String(member.id)]||{phone:''}),password:event.target.value}}))}/><button className="admin-secondary-button" disabled={credentialSaving!==null} onClick={()=>void saveCredentials(member)}><FiSave/>{credentialSaving===member.id?'Saving…':'Save sign-in'}</button></div></details>}

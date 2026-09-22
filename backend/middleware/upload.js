@@ -1,5 +1,6 @@
 // middleware/upload.js
 const multer = require('multer');
+const path = require('path');
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|webp/;
   const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
