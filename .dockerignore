@@ -4,7 +4,6 @@
 .env.*
 node_modules
 **/node_modules
-frontend/dist
 backups
 backend/private
 backend/uploads

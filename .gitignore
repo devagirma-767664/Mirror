@@ -7,3 +7,4 @@ dist/
 backups/
 *.log
 backend/private/
+.mirror-vps-deploy/
