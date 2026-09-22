@@ -19,4 +19,4 @@ COPY --from=build --chown=node:node /app/frontend/dist ./frontend/dist
 
 USER node
 EXPOSE 5000
-CMD ["node", "backend/server.js"]
+CMD ["node", "backend/web.js"]
