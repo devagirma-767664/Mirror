@@ -118,17 +118,11 @@ if (require.main === module) {
   }
   if (production && !allowedOrigins.size) throw new Error('Set CORS_ORIGIN to the browser origin before starting Mirror in production.');
   const server = app.listen(PORT, HOST, () => {
-    const stopTasks = [
-      require('./models/deskFinanceModel').startDailyClock(),
-      require('./models/telegramModel').start(),
-      require('./models/platformEventModel').start(),
-    ];
     let shuttingDown = false;
     const shutdown = signal => {
       if (shuttingDown) return;
       shuttingDown = true;
       console.log(`${signal} received; closing Mirror safely.`);
-      stopTasks.forEach(stop => stop?.());
       server.close(() => pool.end().finally(() => process.exit(0)));
       setTimeout(() => process.exit(1), 10000).unref();
     };

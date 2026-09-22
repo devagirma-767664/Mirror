@@ -13,6 +13,13 @@ services:
       - mirror_uploads:/app/backend/uploads
       - mirror_private:/app/backend/private
 
+  mirror-worker:
+    build: .
+    command: ["node", "backend/worker.js"]
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
 volumes:
   mirror_uploads:
   mirror_private:
