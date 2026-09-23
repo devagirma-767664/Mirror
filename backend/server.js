@@ -92,11 +92,28 @@ app.use('/platform', platformRoutes);
 app.use('/platform', subscriptionRoutes.platform);
 
 if (production && fs.existsSync(clientIndex)) {
-  app.use(express.static(clientDirectory, { index: false, maxAge: '1h', fallthrough: true }));
+  // Vite fingerprints files in /assets, so browsers and Cloudflare can keep
+  // those immutable bundles without re-downloading them on every visit. The
+  // HTML shell stays revalidatable so the next release can point clients to
+  // new asset names immediately.
+  app.use(express.static(clientDirectory, {
+    index: false,
+    fallthrough: true,
+    setHeaders(res, filePath) {
+      const relativePath = path.relative(clientDirectory, filePath);
+      const isHashedAsset = relativePath.startsWith(`assets${path.sep}`);
+      res.setHeader('Cache-Control', isHashedAsset
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=3600');
+    },
+  }));
 }
 app.use((req, res) => {
   const isApiRoute = browserRoutes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`));
-  if (production && !isApiRoute && ['GET', 'HEAD'].includes(req.method) && fs.existsSync(clientIndex)) return res.sendFile(clientIndex);
+  if (production && !isApiRoute && ['GET', 'HEAD'].includes(req.method) && fs.existsSync(clientIndex)) {
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.sendFile(clientIndex);
+  }
   res.status(404).json({ error: 'Route not found.' });
 });
 app.use((error, req, res, _next) => {
