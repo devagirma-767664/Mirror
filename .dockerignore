@@ -14,3 +14,4 @@ backend/*.sql
 backend/*.dump
 screenshots
 *.log
+**/*.swp
